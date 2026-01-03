@@ -187,7 +187,7 @@ const Dashboard = () => {
             <div className="dashboard">
                 <header className="dashboard-header">
                     <div className="header-left">
-                        <img src="/logo.svg" alt="" className="logo-icon" />
+                        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-icon" />
                         <span className="logo-text">Track your Rupee</span>
                     </div>
                     <div className="header-right">
@@ -214,7 +214,7 @@ const Dashboard = () => {
             {/* Header */}
             <header className="dashboard-header">
                 <div className="header-left">
-                    <img src="/logo.svg" alt="" className="logo-icon" />
+                    <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-icon" />
                     <span className="logo-text">Track your Rupee</span>
                 </div>
                 <div className="header-right">

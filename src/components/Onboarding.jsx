@@ -30,7 +30,7 @@ const Onboarding = () => {
             <div className="onboarding-container">
                 {/* Logo */}
                 <div className="logo">
-                    <img src="/logo.svg" alt="" className="logo-img" />
+                    <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-img" />
                     <span className="logo-text">Track your Rupee</span>
                 </div>
 

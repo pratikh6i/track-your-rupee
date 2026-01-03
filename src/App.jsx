@@ -12,7 +12,7 @@ function AppContent() {
     return (
       <div className="app loading-screen">
         <div className="loading-content">
-          <img src="/logo.svg" alt="" className="loading-logo" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="loading-logo" />
           <div className="loading-spinner"></div>
           <p>Preparing your dashboard...</p>
         </div>
