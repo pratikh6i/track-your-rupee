@@ -27,27 +27,20 @@ const Onboarding = () => {
             <div className="onboarding-bg">
                 <div className="orb orb-1"></div>
                 <div className="orb orb-2"></div>
-                <div className="orb orb-3"></div>
             </div>
 
             <div className="onboarding-container">
                 {/* Logo */}
-                <div className="logo animate-slideDown">
-                    <div className="logo-icon">
-                        <Wallet size={32} />
-                    </div>
+                <div className="logo">
+                    <span className="logo-emoji">💰</span>
                     <span className="logo-text">Track your Rupee</span>
                 </div>
 
                 {/* Main Card */}
-                <div className="onboarding-card glass-card-static animate-scaleIn">
-                    <div className="card-icon">
-                        <Sparkles size={48} className="text-blue" />
-                    </div>
-
+                <div className="onboarding-card">
                     <h1 className="card-title">Smart Expense Tracking</h1>
                     <p className="card-subtitle">
-                        Sign in with Google to start tracking your expenses. Your data stays in YOUR Google Sheet — 100% private and secure.
+                        Sign in with Google to start. Your data stays in YOUR Google Sheet — 100% private.
                     </p>
 
                     {displayError && (
@@ -63,8 +56,8 @@ const Onboarding = () => {
                     >
                         {isProcessing ? (
                             <>
-                                <Loader2 className="animate-spin" size={20} />
-                                <span>{authLoading ? 'Signing in...' : 'Setting up your sheet...'}</span>
+                                <Loader2 className="spin" size={20} />
+                                <span>{authLoading ? 'Signing in...' : 'Setting up...'}</span>
                             </>
                         ) : (
                             <>
@@ -79,26 +72,19 @@ const Onboarding = () => {
                         )}
                     </button>
 
-                    <div className="features-list">
-                        <div className="feature-item">
-                            <Shield size={18} className="text-green" />
-                            <span>100% Client-Side — No servers, no databases</span>
+                    <div className="features">
+                        <div className="feature">
+                            <Shield size={16} />
+                            <span>100% Client-Side</span>
                         </div>
-                        <div className="feature-item">
-                            <Sparkles size={18} className="text-blue" />
-                            <span>AI-Powered — Paste receipts from Gemini/ChatGPT</span>
+                        <div className="feature">
+                            <Sparkles size={16} />
+                            <span>AI-Powered</span>
                         </div>
                     </div>
-
-                    <p className="privacy-note">
-                        🔒 Your data is stored only in YOUR Google Drive.
-                        <br />
-                        We never see or store your financial information.
-                    </p>
                 </div>
 
-                {/* Footer */}
-                <p className="onboarding-footer animate-fadeIn stagger-3">
+                <p className="footer-text">
                     Every rupee counts. Track them all.
                 </p>
             </div>

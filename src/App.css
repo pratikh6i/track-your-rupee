@@ -1,32 +1,35 @@
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
 }
 
 .loading-screen {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+  color: white;
 }
 
 .loading-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-6);
+  gap: 1.5rem;
   text-align: center;
 }
 
 .loading-content p {
-  color: var(--text-secondary);
-  font-size: var(--font-size-lg);
+  color: #9CA3AF;
+  font-size: 1rem;
 }
 
 .loading-spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid rgba(41, 98, 255, 0.2);
-  border-top-color: var(--gravity-blue);
+  border: 3px solid rgba(16, 185, 129, 0.2);
+  border-top-color: #10B981;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -34,5 +37,13 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* PWA Install Prompt */
+@media (display-mode: standalone) {
+  .app {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

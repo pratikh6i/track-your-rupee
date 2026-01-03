@@ -1,34 +1,35 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-    Wallet, LogOut, RefreshCw, Zap, HelpCircle,
-    TrendingDown, TrendingUp, ArrowUpRight, ArrowDownRight
+    Wallet, LogOut, RefreshCw, Plus, HelpCircle,
+    TrendingDown, TrendingUp, PieChart, BarChart3,
+    Calendar, Edit3, Check, X, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement } from 'chart.js';
+import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import { useGoogleAuth } from './GoogleAuthProvider';
 import useStore from '../store/useStore';
-import useGoogleSheets from '../hooks/useGoogleSheets';
-import AIQuickAdd from './AIQuickAdd';
-import GravityMeter from './GravityMeter';
-import InsightCards from './InsightCards';
+import { getCategoryColor, getCategoryIcon, getCategoryNames, getSubcategories } from '../data/categories';
+import AddExpenseModal from './AddExpenseModal';
 import HelpModal from './HelpModal';
 import './Dashboard.css';
 
-// Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement);
 
 const Dashboard = () => {
-    const { user, logout } = useGoogleAuth();
-    const {
-        sheetData, isLoading, getStats,
-        isAIModalOpen, toggleAIModal,
-        isHelpModalOpen, toggleHelpModal
-    } = useStore();
-    const { refreshData } = useGoogleSheets();
+    const { user, logout, refreshData, updateExpense } = useGoogleAuth();
+    const { sheetData, isLoading, getStats, isHelpModalOpen, toggleHelpModal, isAddModalOpen, toggleAddModal } = useStore();
+    const [editingId, setEditingId] = useState(null);
+    const [editValues, setEditValues] = useState({});
+    const [showAllTransactions, setShowAllTransactions] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
+
     const stats = getStats();
+    const hasIncome = stats.totalIncome > 0;
 
     useEffect(() => {
-        refreshData();
+        if (sheetData.length === 0) {
+            refreshData?.();
+        }
     }, []);
 
     const formatCurrency = (amount) => {
@@ -40,222 +41,372 @@ const Dashboard = () => {
         }).format(amount);
     };
 
-    // Category chart data
-    const categoryColors = [
-        '#2962FF', '#00C853', '#FF6D00', '#AA00FF',
-        '#00B8D4', '#FFD600', '#FF1744', '#64DD17'
-    ];
+    // Start editing a transaction
+    const startEdit = (transaction, index) => {
+        setEditingId(index);
+        setEditValues({
+            date: transaction.date,
+            item: transaction.item,
+            amount: transaction.amount,
+            paymentMethod: transaction.paymentMethod,
+            notes: transaction.notes
+        });
+    };
 
+    // Save edit
+    const saveEdit = async (index) => {
+        const transaction = sheetData[index];
+        await updateExpense(index, { ...transaction, ...editValues });
+        setEditingId(null);
+        setEditValues({});
+    };
+
+    // Cancel edit
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditValues({});
+    };
+
+    // Category chart with premium colors
     const categoryData = {
         labels: Object.keys(stats.categoryBreakdown),
         datasets: [{
             data: Object.values(stats.categoryBreakdown),
-            backgroundColor: categoryColors.slice(0, Object.keys(stats.categoryBreakdown).length),
+            backgroundColor: Object.keys(stats.categoryBreakdown).map(cat => getCategoryColor(cat)),
             borderWidth: 0,
-            hoverOffset: 10,
+            hoverOffset: 8,
+            borderRadius: 4,
         }]
     };
 
-    const categoryOptions = {
+    const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '70%',
+        cutout: '65%',
         plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    usePointStyle: true,
-                    font: { family: 'Inter', size: 12 }
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { family: 'Inter', size: 13, weight: '600' },
+                bodyFont: { family: 'Inter', size: 12 },
+                padding: 12,
+                cornerRadius: 8,
+                callbacks: {
+                    label: (ctx) => ` ${formatCurrency(ctx.raw)}`
                 }
             }
         }
     };
 
-    // Velocity chart data
-    const velocityData = {
+    // Spending trend chart
+    const trendData = {
         labels: stats.dailySpending.map(d => {
             const date = new Date(d.date);
             return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
         }),
         datasets: [{
-            label: 'Daily Spending',
-            data: stats.dailySpending.map(d => d.amount),
+            label: 'Expenses',
+            data: stats.dailySpending.map(d => d.expense),
             fill: true,
-            backgroundColor: 'rgba(41, 98, 255, 0.1)',
-            borderColor: '#2962FF',
+            backgroundColor: (ctx) => {
+                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+                gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                return gradient;
+            },
+            borderColor: '#EF4444',
             borderWidth: 2,
             tension: 0.4,
             pointRadius: 0,
             pointHoverRadius: 6,
-            pointHoverBackgroundColor: '#2962FF',
+            pointHoverBackgroundColor: '#EF4444',
         }]
     };
 
-    const velocityOptions = {
+    const trendOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
+        plugins: { legend: { display: false } },
         scales: {
             x: {
                 grid: { display: false },
-                ticks: { font: { family: 'Inter', size: 11 }, color: '#6E6E73' }
+                ticks: { font: { family: 'Inter', size: 10 }, color: '#9CA3AF', maxRotation: 0 }
             },
             y: {
-                grid: { color: 'rgba(0,0,0,0.04)' },
+                grid: { color: 'rgba(255,255,255,0.05)' },
                 ticks: {
-                    font: { family: 'Inter', size: 11 },
-                    color: '#6E6E73',
-                    callback: (value) => '₹' + value.toLocaleString()
+                    font: { family: 'Inter', size: 10 },
+                    color: '#9CA3AF',
+                    callback: (value) => '₹' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
                 }
             }
         }
     };
 
+    // Category bar chart
+    const barData = {
+        labels: stats.topCategories.map(c => c.name),
+        datasets: [{
+            data: stats.topCategories.map(c => c.amount),
+            backgroundColor: stats.topCategories.map(c => getCategoryColor(c.name)),
+            borderRadius: 6,
+            barThickness: 24,
+        }]
+    };
+
+    const barOptions = {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: {
+                grid: { color: 'rgba(255,255,255,0.05)' },
+                ticks: {
+                    font: { family: 'Inter', size: 10 },
+                    color: '#9CA3AF',
+                    callback: (value) => '₹' + (value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value)
+                }
+            },
+            y: {
+                grid: { display: false },
+                ticks: { font: { family: 'Inter', size: 11 }, color: '#E5E7EB' }
+            }
+        }
+    };
+
+    const displayedTransactions = showAllTransactions
+        ? stats.recentTransactions
+        : stats.recentTransactions.slice(0, 5);
+
     return (
         <div className="dashboard">
             {/* Header */}
-            <header className="dashboard-header glass-card-static">
+            <header className="dashboard-header">
                 <div className="header-left">
-                    <div className="logo-mini">
-                        <Wallet size={24} />
-                    </div>
-                    <span className="logo-text-mini">Track your Rupee</span>
+                    <div className="logo-mini">💰</div>
+                    <span className="logo-text">Track your Rupee</span>
                 </div>
-
                 <div className="header-right">
-                    <button className="btn btn-secondary" onClick={toggleHelpModal}>
+                    <button className="btn-icon" onClick={refreshData} disabled={isLoading} title="Refresh">
+                        <RefreshCw size={18} className={isLoading ? 'spin' : ''} />
+                    </button>
+                    <button className="btn-icon" onClick={toggleHelpModal} title="AI Prompts">
                         <HelpCircle size={18} />
-                        <span className="hide-mobile">AI Prompts</span>
                     </button>
-                    <button className="btn btn-primary" onClick={toggleAIModal}>
-                        <Zap size={18} />
-                        <span className="hide-mobile">Quick-Add</span>
+                    {user?.picture && <img src={user.picture} alt="" className="user-avatar" />}
+                    <button className="btn-icon logout" onClick={logout} title="Logout">
+                        <LogOut size={18} />
                     </button>
-                    <button className="btn-icon-ghost" onClick={refreshData} disabled={isLoading}>
-                        <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
-                    </button>
-                    <div className="user-menu">
-                        {user?.picture && <img src={user.picture} alt={user.name} className="user-avatar" />}
-                        <button className="btn-icon-ghost" onClick={logout}>
-                            <LogOut size={18} />
-                        </button>
-                    </div>
                 </div>
             </header>
 
+            {/* Mobile Tabs */}
+            <div className="mobile-tabs">
+                <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                    <PieChart size={16} /> Overview
+                </button>
+                <button className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+                    <BarChart3 size={16} /> Transactions
+                </button>
+            </div>
+
             {/* Main Content */}
-            <main className="dashboard-main container">
-                {/* Welcome Section */}
-                <section className="welcome-section animate-slideDown">
-                    <h1>Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
-                    <p className="welcome-subtitle">{stats.message.text}</p>
+            <main className="dashboard-main">
+                {/* Quick Stats */}
+                <section className={`stats-section ${activeTab !== 'overview' ? 'hide-mobile' : ''}`}>
+                    <div className="stat-card expense">
+                        <div className="stat-header">
+                            <TrendingDown size={20} />
+                            <span>Total Expenses</span>
+                        </div>
+                        <div className="stat-value">{formatCurrency(stats.totalExpenses)}</div>
+                        <div className="stat-meta">{stats.transactionCount || 0} transactions</div>
+                    </div>
+
+                    {hasIncome && (
+                        <>
+                            <div className="stat-card income">
+                                <div className="stat-header">
+                                    <TrendingUp size={20} />
+                                    <span>Total Income</span>
+                                </div>
+                                <div className="stat-value">{formatCurrency(stats.totalIncome)}</div>
+                            </div>
+
+                            <div className={`stat-card ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
+                                <div className="stat-header">
+                                    <Wallet size={20} />
+                                    <span>Balance</span>
+                                </div>
+                                <div className="stat-value">{formatCurrency(stats.balance)}</div>
+                                <div className="stat-meta">
+                                    {((stats.totalExpenses / stats.totalIncome) * 100).toFixed(0)}% spent
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </section>
-
-                {/* Stats Cards */}
-                <section className="stats-grid">
-                    <div className="stat-card glass-card animate-slideUp stagger-1">
-                        <div className="stat-icon income">
-                            <TrendingUp size={24} />
-                        </div>
-                        <div className="stat-content">
-                            <span className="stat-label">Total Income</span>
-                            <span className="stat-value text-green">{formatCurrency(stats.totalIncome)}</span>
-                        </div>
-                        <ArrowUpRight className="stat-arrow text-green" size={20} />
-                    </div>
-
-                    <div className="stat-card glass-card animate-slideUp stagger-2">
-                        <div className="stat-icon expense">
-                            <TrendingDown size={24} />
-                        </div>
-                        <div className="stat-content">
-                            <span className="stat-label">Total Expenses</span>
-                            <span className="stat-value text-red">{formatCurrency(stats.totalExpenses)}</span>
-                        </div>
-                        <ArrowDownRight className="stat-arrow text-red" size={20} />
-                    </div>
-
-                    <div className="stat-card glass-card animate-slideUp stagger-3">
-                        <div className="stat-icon balance">
-                            <Wallet size={24} />
-                        </div>
-                        <div className="stat-content">
-                            <span className="stat-label">Balance</span>
-                            <span className={`stat-value ${stats.balance >= 0 ? 'text-green' : 'text-red'}`}>
-                                {formatCurrency(stats.balance)}
-                            </span>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Spending Meter */}
-                <GravityMeter income={stats.totalIncome} expenses={stats.totalExpenses} />
 
                 {/* Charts Section */}
-                <section className="charts-grid">
-                    <div className="chart-card glass-card-static animate-slideUp stagger-4">
-                        <h3 className="chart-title">Spending by Category</h3>
-                        <div className="chart-container donut-chart">
+                <section className={`charts-section ${activeTab !== 'overview' ? 'hide-mobile' : ''}`}>
+                    {/* Category Breakdown */}
+                    <div className="chart-card">
+                        <h3 className="chart-title">
+                            <PieChart size={18} /> Spending by Category
+                        </h3>
+                        <div className="chart-content">
                             {Object.keys(stats.categoryBreakdown).length > 0 ? (
-                                <Doughnut data={categoryData} options={categoryOptions} />
+                                <>
+                                    <div className="donut-container">
+                                        <Doughnut data={categoryData} options={chartOptions} />
+                                        <div className="donut-center">
+                                            <span className="donut-total">{formatCurrency(stats.totalExpenses)}</span>
+                                            <span className="donut-label">Total</span>
+                                        </div>
+                                    </div>
+                                    <div className="category-legend">
+                                        {stats.topCategories.map((cat, i) => (
+                                            <div key={i} className="legend-item">
+                                                <span className="legend-dot" style={{ background: getCategoryColor(cat.name) }}></span>
+                                                <span className="legend-icon">{getCategoryIcon(cat.name)}</span>
+                                                <span className="legend-name">{cat.name}</span>
+                                                <span className="legend-value">{formatCurrency(cat.amount)}</span>
+                                                <span className="legend-percent">{cat.percentage}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
                             ) : (
                                 <div className="empty-chart">
-                                    <p>No expenses yet. Start tracking!</p>
+                                    <p>No expenses yet</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    <div className="chart-card glass-card-static animate-slideUp stagger-5">
-                        <h3 className="chart-title">Spending Trend</h3>
-                        <div className="chart-container line-chart">
+                    {/* Spending Trend */}
+                    <div className="chart-card">
+                        <h3 className="chart-title">
+                            <BarChart3 size={18} /> Daily Spending Trend
+                        </h3>
+                        <div className="chart-content trend-chart">
                             {stats.dailySpending.length > 0 ? (
-                                <Line data={velocityData} options={velocityOptions} />
+                                <Line data={trendData} options={trendOptions} />
                             ) : (
                                 <div className="empty-chart">
-                                    <p>Add some expenses to see your spending trend.</p>
+                                    <p>Add expenses to see trend</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Top Categories Bar */}
+                    <div className="chart-card full-width">
+                        <h3 className="chart-title">
+                            <BarChart3 size={18} /> Top Spending Categories
+                        </h3>
+                        <div className="chart-content bar-chart">
+                            {stats.topCategories.length > 0 ? (
+                                <Bar data={barData} options={barOptions} />
+                            ) : (
+                                <div className="empty-chart">
+                                    <p>No data yet</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </section>
 
-                {/* Insight Cards */}
-                <InsightCards stats={stats} />
+                {/* Transactions Section */}
+                <section className={`transactions-section ${activeTab !== 'transactions' ? 'hide-mobile' : ''}`}>
+                    <div className="section-header">
+                        <h3><Calendar size={18} /> Recent Transactions</h3>
+                        {stats.recentTransactions.length > 5 && (
+                            <button className="btn-text" onClick={() => setShowAllTransactions(!showAllTransactions)}>
+                                {showAllTransactions ? 'Show Less' : 'Show All'}
+                                {showAllTransactions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                        )}
+                    </div>
 
-                {/* Recent Transactions */}
-                <section className="transactions-section glass-card-static animate-slideUp">
-                    <h3 className="section-title">Recent Transactions</h3>
-                    {sheetData.length > 0 ? (
+                    {displayedTransactions.length > 0 ? (
                         <div className="transactions-list">
-                            {sheetData.slice(-10).reverse().map((item, index) => (
-                                <div key={index} className="transaction-item">
-                                    <div className="transaction-info">
-                                        <span className="transaction-name">{item.item}</span>
-                                        <span className="transaction-category">{item.category}</span>
+                            {displayedTransactions.map((item, idx) => {
+                                const originalIndex = sheetData.findIndex(d => d.id === item.id);
+                                const isEditing = editingId === originalIndex;
+
+                                return (
+                                    <div key={idx} className={`transaction-row ${isEditing ? 'editing' : ''}`}>
+                                        {isEditing ? (
+                                            <>
+                                                <div className="edit-fields">
+                                                    <input
+                                                        type="date"
+                                                        value={editValues.date}
+                                                        onChange={(e) => setEditValues({ ...editValues, date: e.target.value })}
+                                                        className="edit-input"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={editValues.item}
+                                                        onChange={(e) => setEditValues({ ...editValues, item: e.target.value })}
+                                                        className="edit-input"
+                                                        placeholder="Item name"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={editValues.amount}
+                                                        onChange={(e) => setEditValues({ ...editValues, amount: parseFloat(e.target.value) })}
+                                                        className="edit-input amount"
+                                                        placeholder="Amount"
+                                                    />
+                                                </div>
+                                                <div className="edit-actions">
+                                                    <button className="btn-icon save" onClick={() => saveEdit(originalIndex)}><Check size={16} /></button>
+                                                    <button className="btn-icon cancel" onClick={cancelEdit}><X size={16} /></button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="transaction-icon" style={{ background: getCategoryColor(item.category) }}>
+                                                    {getCategoryIcon(item.category)}
+                                                </div>
+                                                <div className="transaction-info">
+                                                    <span className="transaction-name">{item.item}</span>
+                                                    <span className="transaction-meta">
+                                                        {item.category} {item.subcategory && `› ${item.subcategory}`} • {item.date}
+                                                    </span>
+                                                </div>
+                                                <div className="transaction-amount">
+                                                    <span className={item.category === 'Income' ? 'income' : 'expense'}>
+                                                        {item.category === 'Income' ? '+' : '-'}{formatCurrency(Math.abs(item.amount))}
+                                                    </span>
+                                                </div>
+                                                <button className="btn-icon edit" onClick={() => startEdit(item, originalIndex)}>
+                                                    <Edit3 size={14} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
-                                    <div className="transaction-details">
-                                        <span className={`transaction-amount ${item.category === 'Income' ? 'income' : 'expense'}`}>
-                                            {item.category === 'Income' ? '+' : '-'}{formatCurrency(Math.abs(item.amount))}
-                                        </span>
-                                        <span className="transaction-date">{item.date}</span>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="empty-state">
-                            <p>No transactions yet. Use the Quick-Add button to add your first expense!</p>
+                            <p>No transactions yet. Tap + to add your first expense!</p>
                         </div>
                     )}
                 </section>
             </main>
 
+            {/* Floating Add Button */}
+            <button className="fab" onClick={toggleAddModal}>
+                <Plus size={24} />
+            </button>
+
             {/* Modals */}
-            {isAIModalOpen && <AIQuickAdd onClose={toggleAIModal} />}
+            {isAddModalOpen && <AddExpenseModal onClose={toggleAddModal} />}
             {isHelpModalOpen && <HelpModal onClose={toggleHelpModal} />}
         </div>
     );

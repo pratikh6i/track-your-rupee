@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard';
 import './App.css';
 
 function AppContent() {
-  const { isAuthenticated, sheetId } = useStore();
+  const { sheetId, sheetData, user } = useStore();
   const { isLoading } = useGoogleAuth();
 
   // Show loading state during authentication
@@ -20,12 +20,13 @@ function AppContent() {
     );
   }
 
-  // Strict auth check - must be authenticated AND have a sheet
-  const showDashboard = isAuthenticated && sheetId;
+  // Check if we have user data and sheet - show dashboard
+  // Data persists in localStorage, so refresh should retain state
+  const hasSession = user && sheetId;
 
   return (
     <div className="app">
-      {showDashboard ? <Dashboard /> : <Onboarding />}
+      {hasSession ? <Dashboard /> : <Onboarding />}
     </div>
   );
 }
