@@ -192,9 +192,32 @@
 }
 
 /* Footer */
-.footer-text {
+.onboarding-footer {
+    text-align: center;
+}
+
+.tagline {
     font-size: 0.875rem;
+    color: #6B7280;
+    margin-bottom: 0.5rem;
+}
+
+.credit {
+    font-size: 0.75rem;
     color: #4B5563;
+}
+
+.credit strong {
+    color: #9CA3AF;
+    font-weight: 500;
+}
+
+.credit .heart {
+    background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 600;
 }
 
 /* Mobile optimizations */

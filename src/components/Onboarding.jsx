@@ -84,9 +84,12 @@ const Onboarding = () => {
                     </div>
                 </div>
 
-                <p className="footer-text">
-                    Every rupee counts. Track them all.
-                </p>
+                <footer className="onboarding-footer">
+                    <p className="tagline">Every rupee counts. Track them all.</p>
+                    <p className="credit">
+                        Built with <span className="heart">AI</span> by <strong>Pratik Shetti</strong>
+                    </p>
+                </footer>
             </div>
         </div>
     );
