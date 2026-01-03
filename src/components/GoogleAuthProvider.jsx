@@ -1,14 +1,46 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { GoogleOAuthProvider, useGoogleLogin, googleLogout } from '@react-oauth/google';
 import useStore from '../store/useStore';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const APP_SHEET_PREFIX = 'Track your Rupee';
+const TOKEN_STORAGE_KEY = 'tyr_access_token';
+const TOKEN_EXPIRY_KEY = 'tyr_token_expiry';
+const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour session
 
 // Generate unique sheet name using user email
 const getUniqueSheetName = (email) => {
     const emailPrefix = email ? email.split('@')[0] : 'user';
     return `${APP_SHEET_PREFIX} - ${emailPrefix}`;
+};
+
+// Session storage helpers
+const saveSession = (token) => {
+    const expiry = Date.now() + SESSION_DURATION_MS;
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+    console.log('✓ Session saved, expires in 1 hour');
+};
+
+const getStoredSession = () => {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+
+    if (!token || !expiry) return null;
+
+    if (Date.now() > parseInt(expiry)) {
+        console.log('✗ Stored session expired');
+        clearSession();
+        return null;
+    }
+
+    console.log('✓ Found valid stored session');
+    return token;
+};
+
+const clearSession = () => {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
 };
 
 const GoogleAuthContext = createContext(null);
@@ -33,7 +65,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         setNeedsSheet
     } = store;
 
-    const [isLoading, setAuthLoading] = useState(false);
+    const [isLoading, setAuthLoading] = useState(true); // Start true for session restore
     const [authError, setAuthError] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
 
@@ -309,6 +341,7 @@ const GoogleAuthProviderInner = ({ children }) => {
             try {
                 const token = tokenResponse.access_token;
                 setAccessToken(token);
+                saveSession(token); // Save session for persistence
 
                 // Get user info
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -376,9 +409,80 @@ const GoogleAuthProviderInner = ({ children }) => {
         scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
     });
 
+    // Restore session on mount
+    useEffect(() => {
+        const restoreSession = async () => {
+            const token = getStoredSession();
+            if (!token) {
+                setAuthLoading(false);
+                return;
+            }
+
+            try {
+                // Verify token and get user info
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (!userInfoResponse.ok) {
+                    throw new Error('Session expired');
+                }
+
+                const userInfo = await userInfoResponse.json();
+                setAccessToken(token);
+                setUser({
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    picture: userInfo.picture,
+                    sub: userInfo.sub,
+                });
+
+                // Load data using validated token
+                const storedSheetId = useStore.getState().sheetId;
+                if (storedSheetId) {
+                    const isValid = await verifySheetAccess(token, storedSheetId);
+                    if (isValid) {
+                        await loadSheetData(token, storedSheetId);
+                        setCurrentView('dashboard');
+                    } else {
+                        // If persisted sheet invalid, search Drive
+                        const existingSheets = await findExistingSheets(token, userInfo.email);
+                        if (existingSheets.length > 0) {
+                            setSheetId(existingSheets[0].id);
+                            await loadSheetData(token, existingSheets[0].id);
+                            setCurrentView('dashboard');
+                        } else {
+                            setSheetData([]);
+                            setNeedsSheet(true);
+                        }
+                    }
+                } else {
+                    // No stored sheet ID, search Drive
+                    const existingSheets = await findExistingSheets(token, userInfo.email);
+                    if (existingSheets.length > 0) {
+                        setSheetId(existingSheets[0].id);
+                        await loadSheetData(token, existingSheets[0].id);
+                        setCurrentView('dashboard');
+                    } else {
+                        setNeedsSheet(true);
+                    }
+                }
+            } catch (error) {
+                console.error('Session restore failed:', error);
+                clearSession();
+                storeLogout();
+            } finally {
+                setAuthLoading(false);
+            }
+        };
+
+        restoreSession();
+    }, []);
+
     const logout = useCallback(() => {
         googleLogout();
         setAccessToken(null);
+        clearSession();
         storeLogout();
     }, [storeLogout]);
 
