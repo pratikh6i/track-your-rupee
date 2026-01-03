@@ -25,6 +25,12 @@
   font-size: 1rem;
 }
 
+.loading-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 0.5rem;
+}
+
 .loading-spinner {
   width: 48px;
   height: 48px;

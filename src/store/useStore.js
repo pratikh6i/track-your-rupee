@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 // Helper to get spending message
 const getSpendingMessage = (spending, income) => {
-  if (income === 0) return { text: "Start tracking your income to see insights!", type: "neutral" };
+  if (income === 0) return { text: "Expense tracking only - add Income transactions to see balance", type: "neutral" };
   const ratio = spending / income;
   if (ratio > 0.9) return { text: "🚨 Spending is critical! Time to review.", type: "danger" };
   if (ratio > 0.7) return { text: "⚠️ High spending detected this period", type: "warning" };
@@ -15,49 +15,50 @@ const getSpendingMessage = (spending, income) => {
 const useStore = create(
   persist(
     (set, get) => ({
-      // Auth State
+      // Auth State - ONLY store minimal session info
       user: null,
-      accessToken: null,
       isAuthenticated: false,
 
-      // Sheet State
+      // Sheet State - sheetId persists, but DATA does NOT persist
       sheetId: null,
-      sheetData: [],
+      sheetData: [], // This is now runtime only, not persisted
       isLoading: false,
       error: null,
-      lastFetched: null,
+      needsSheet: false, // True when no sheet found
 
       // UI State
       currentView: 'onboarding',
       isAIModalOpen: false,
+      isQuickAddOpen: false,
       isHelpModalOpen: false,
       isAddModalOpen: false,
       editingTransaction: null,
 
       // Actions - Auth
-      setUser: (user, accessToken) => set({
+      setUser: (user) => set({
         user,
-        accessToken,
         isAuthenticated: !!user,
       }),
 
-      logout: () => set({
-        user: null,
-        accessToken: null,
-        isAuthenticated: false,
-        sheetId: null,
-        sheetData: [],
-        currentView: 'onboarding',
-        lastFetched: null
-      }),
+      logout: () => {
+        // Clear everything on logout
+        set({
+          user: null,
+          isAuthenticated: false,
+          sheetId: null,
+          sheetData: [],
+          currentView: 'onboarding',
+          needsSheet: false
+        });
+      },
 
       // Actions - Sheet
       setSheetId: (sheetId) => set({ sheetId }),
+      setNeedsSheet: (needsSheet) => set({ needsSheet }),
 
-      setSheetData: (sheetData) => set({
-        sheetData,
-        lastFetched: Date.now()
-      }),
+      setSheetData: (sheetData) => set({ sheetData }),
+
+      clearSheetData: () => set({ sheetData: [], sheetId: null }),
 
       addExpense: (expense) => set((state) => ({
         sheetData: [...state.sheetData, expense]
@@ -82,6 +83,7 @@ const useStore = create(
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
       toggleAIModal: () => set((state) => ({ isAIModalOpen: !state.isAIModalOpen })),
+      toggleQuickAdd: () => set((state) => ({ isQuickAddOpen: !state.isQuickAddOpen })),
       toggleHelpModal: () => set((state) => ({ isHelpModalOpen: !state.isHelpModalOpen })),
       toggleAddModal: () => set((state) => ({ isAddModalOpen: !state.isAddModalOpen })),
       setEditingTransaction: (transaction) => set({ editingTransaction: transaction }),
@@ -89,7 +91,7 @@ const useStore = create(
       // Computed values (getters)
       getStats: () => {
         const state = get();
-        const data = state.sheetData;
+        const data = state.sheetData || [];
 
         if (!data || data.length === 0) {
           return {
@@ -102,7 +104,8 @@ const useStore = create(
             weeklyTrend: [],
             topCategories: [],
             recentTransactions: [],
-            message: { text: "No data yet. Add your first expense!", type: "neutral" }
+            transactionCount: 0,
+            message: { text: "No transactions yet. Use AI Quick-Add to import expenses!", type: "neutral" }
           };
         }
 
@@ -124,7 +127,7 @@ const useStore = create(
             return acc;
           }, {});
 
-        // Subcategory breakdown (for Food mainly)
+        // Subcategory breakdown
         const subcategoryBreakdown = data
           .filter(item => item.category !== 'Income' && item.subcategory)
           .reduce((acc, item) => {
@@ -185,11 +188,10 @@ const useStore = create(
       }
     }),
     {
-      name: 'track-your-rupee-storage',
+      name: 'track-your-rupee-v2',
+      // ONLY persist sheetId and user - NOT the data
       partialize: (state) => ({
         sheetId: state.sheetId,
-        sheetData: state.sheetData,
-        lastFetched: state.lastFetched,
         user: state.user ? { email: state.user.email, name: state.user.name, picture: state.user.picture } : null
       })
     }

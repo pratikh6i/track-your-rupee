@@ -1,80 +1,137 @@
+/* Help Modal - AI Prompts */
 .help-modal {
-    max-width: 700px;
+    background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: scaleIn 0.2s ease;
 }
 
-.modal-intro {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: var(--space-6);
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.help-content {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.help-intro {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 12px;
+    color: #10B981;
+    font-size: 0.875rem;
+    margin-bottom: 1.25rem;
 }
 
 .prompts-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 0.75rem;
 }
 
 .prompt-card {
-    background: rgba(0, 0, 0, 0.02);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-}
-
-.prompt-header {
-    display: flex;
-    gap: var(--space-4);
-    margin-bottom: var(--space-4);
-}
-
-.prompt-icon {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, var(--gravity-blue) 0%, var(--gravity-blue-light) 100%);
-    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: white;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    transition: background 0.2s;
+}
+
+.prompt-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.prompt-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #E5E7EB;
+    margin-bottom: 0.25rem;
+}
+
+.prompt-header p {
+    font-size: 0.8125rem;
+    color: #6B7280;
+}
+
+.btn-copy {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 10px;
+    color: #3B82F6;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
     flex-shrink: 0;
 }
 
-.prompt-meta h3 {
-    font-size: var(--font-size-base);
-    font-weight: 600;
-    margin-bottom: var(--space-1);
+.btn-copy:hover {
+    background: rgba(59, 130, 246, 0.25);
 }
 
-.prompt-meta p {
-    font-size: var(--font-size-sm);
-    color: var(--text-tertiary);
+.btn-copy.copied {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10B981;
 }
 
-.prompt-text {
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    margin-bottom: var(--space-4);
-    overflow-x: auto;
+.help-tip {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 12px;
+    font-size: 0.8125rem;
+    color: #FCD34D;
 }
 
-.prompt-text pre {
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: var(--font-size-sm);
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: var(--text-secondary);
+.help-tip strong {
+    color: #FBBF24;
 }
 
-.copy-btn {
-    width: 100%;
-}
+/* Mobile */
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
 
-.copy-btn svg {
-    transition: transform var(--transition-fast);
-}
+    .help-modal {
+        border-radius: 24px 24px 0 0;
+        max-height: 90vh;
+    }
 
-.copy-btn:hover svg {
-    transform: scale(1.1);
+    .prompt-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-copy {
+        justify-content: center;
+    }
 }

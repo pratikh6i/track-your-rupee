@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Wallet, Sparkles, Shield, Loader2 } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 import { useGoogleAuth } from './GoogleAuthProvider';
-import useStore from '../store/useStore';
 import './Onboarding.css';
 
 const Onboarding = () => {
     const { login, isLoading: authLoading, authError } = useGoogleAuth();
-    const { isLoading } = useStore();
     const [localError, setLocalError] = useState(null);
 
     const handleGoogleLogin = async () => {
@@ -18,12 +16,12 @@ const Onboarding = () => {
         }
     };
 
-    const isProcessing = authLoading || isLoading;
+    const isProcessing = authLoading;
     const displayError = authError || localError;
 
     return (
         <div className="onboarding">
-            {/* Background decoration */}
+            {/* Background */}
             <div className="onboarding-bg">
                 <div className="orb orb-1"></div>
                 <div className="orb orb-2"></div>
@@ -32,7 +30,7 @@ const Onboarding = () => {
             <div className="onboarding-container">
                 {/* Logo */}
                 <div className="logo">
-                    <span className="logo-emoji">💰</span>
+                    <img src="/logo.svg" alt="" className="logo-img" />
                     <span className="logo-text">Track your Rupee</span>
                 </div>
 
@@ -57,7 +55,7 @@ const Onboarding = () => {
                         {isProcessing ? (
                             <>
                                 <Loader2 className="spin" size={20} />
-                                <span>{authLoading ? 'Signing in...' : 'Setting up...'}</span>
+                                <span>Signing in...</span>
                             </>
                         ) : (
                             <>
@@ -75,10 +73,12 @@ const Onboarding = () => {
                     <div className="features">
                         <div className="feature">
                             <Shield size={16} />
-                            <span>100% Client-Side</span>
+                            <span>100% Private</span>
                         </div>
                         <div className="feature">
-                            <Sparkles size={16} />
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                            </svg>
                             <span>AI-Powered</span>
                         </div>
                     </div>

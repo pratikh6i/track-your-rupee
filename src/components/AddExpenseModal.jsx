@@ -113,12 +113,16 @@ const AddExpenseModal = ({ onClose }) => {
                     <div className="form-group">
                         <label>Amount (₹)</label>
                         <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={formData.amount}
-                            onChange={(e) => handleChange('amount', e.target.value)}
+                            onChange={(e) => {
+                                // Only allow numbers and decimal
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                handleChange('amount', val);
+                            }}
                             placeholder="0"
                             className="form-input amount-input"
-                            inputMode="decimal"
                         />
                     </div>
 

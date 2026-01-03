@@ -1,23 +1,30 @@
 import { useState, useEffect } from 'react';
 import {
-    Wallet, LogOut, RefreshCw, Plus, HelpCircle,
+    LogOut, RefreshCw, Plus, Zap,
     TrendingDown, TrendingUp, PieChart, BarChart3,
-    Calendar, Edit3, Check, X, ChevronDown, ChevronUp
+    Calendar, Edit3, Check, X, ChevronDown, ChevronUp, FileText
 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement } from 'chart.js';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import { useGoogleAuth } from './GoogleAuthProvider';
 import useStore from '../store/useStore';
-import { getCategoryColor, getCategoryIcon, getCategoryNames, getSubcategories } from '../data/categories';
+import { getCategoryColor, getCategoryIcon, getCategoryNames } from '../data/categories';
 import AddExpenseModal from './AddExpenseModal';
+import AIQuickAdd from './AIQuickAdd';
 import HelpModal from './HelpModal';
 import './Dashboard.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement);
 
 const Dashboard = () => {
-    const { user, logout, refreshData, updateExpense } = useGoogleAuth();
-    const { sheetData, isLoading, getStats, isHelpModalOpen, toggleHelpModal, isAddModalOpen, toggleAddModal } = useStore();
+    const { user, logout, refreshData, updateExpense, createSheet, isAuthenticated } = useGoogleAuth();
+    const {
+        sheetData, isLoading, getStats,
+        isHelpModalOpen, toggleHelpModal,
+        isAddModalOpen, toggleAddModal,
+        isQuickAddOpen, toggleQuickAdd,
+        needsSheet
+    } = useStore();
     const [editingId, setEditingId] = useState(null);
     const [editValues, setEditValues] = useState({});
     const [showAllTransactions, setShowAllTransactions] = useState(false);
@@ -25,12 +32,14 @@ const Dashboard = () => {
 
     const stats = getStats();
     const hasIncome = stats.totalIncome > 0;
+    const hasData = sheetData && sheetData.length > 0;
 
+    // Load data on mount if authenticated
     useEffect(() => {
-        if (sheetData.length === 0) {
+        if (isAuthenticated && !needsSheet && sheetData.length === 0) {
             refreshData?.();
         }
-    }, []);
+    }, [isAuthenticated, needsSheet]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-IN', {
@@ -41,7 +50,7 @@ const Dashboard = () => {
         }).format(amount);
     };
 
-    // Start editing a transaction
+    // Edit functions
     const startEdit = (transaction, index) => {
         setEditingId(index);
         setEditValues({
@@ -53,7 +62,6 @@ const Dashboard = () => {
         });
     };
 
-    // Save edit
     const saveEdit = async (index) => {
         const transaction = sheetData[index];
         await updateExpense(index, { ...transaction, ...editValues });
@@ -61,13 +69,12 @@ const Dashboard = () => {
         setEditValues({});
     };
 
-    // Cancel edit
     const cancelEdit = () => {
         setEditingId(null);
         setEditValues({});
     };
 
-    // Category chart with premium colors
+    // Chart configurations
     const categoryData = {
         labels: Object.keys(stats.categoryBreakdown),
         datasets: [{
@@ -75,7 +82,6 @@ const Dashboard = () => {
             backgroundColor: Object.keys(stats.categoryBreakdown).map(cat => getCategoryColor(cat)),
             borderWidth: 0,
             hoverOffset: 8,
-            borderRadius: 4,
         }]
     };
 
@@ -86,19 +92,16 @@ const Dashboard = () => {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.8)',
+                backgroundColor: 'rgba(0,0,0,0.85)',
                 titleFont: { family: 'Inter', size: 13, weight: '600' },
                 bodyFont: { family: 'Inter', size: 12 },
                 padding: 12,
                 cornerRadius: 8,
-                callbacks: {
-                    label: (ctx) => ` ${formatCurrency(ctx.raw)}`
-                }
+                callbacks: { label: (ctx) => ` ${formatCurrency(ctx.raw)}` }
             }
         }
     };
 
-    // Spending trend chart
     const trendData = {
         labels: stats.dailySpending.map(d => {
             const date = new Date(d.date);
@@ -143,7 +146,6 @@ const Dashboard = () => {
         }
     };
 
-    // Category bar chart
     const barData = {
         labels: stats.topCategories.map(c => c.name),
         datasets: [{
@@ -179,20 +181,51 @@ const Dashboard = () => {
         ? stats.recentTransactions
         : stats.recentTransactions.slice(0, 5);
 
+    // No Sheet Prompt
+    if (needsSheet) {
+        return (
+            <div className="dashboard">
+                <header className="dashboard-header">
+                    <div className="header-left">
+                        <img src="/logo.svg" alt="" className="logo-icon" />
+                        <span className="logo-text">Track your Rupee</span>
+                    </div>
+                    <div className="header-right">
+                        {user?.picture && <img src={user.picture} alt="" className="user-avatar" />}
+                        <button className="btn-icon logout" onClick={logout} title="Logout">
+                            <LogOut size={18} />
+                        </button>
+                    </div>
+                </header>
+                <div className="no-sheet-prompt">
+                    <FileText size={48} />
+                    <h2>No Expense Sheet Found</h2>
+                    <p>Create a new Google Sheet to start tracking your expenses.</p>
+                    <button className="btn-create-sheet" onClick={createSheet} disabled={isLoading}>
+                        {isLoading ? 'Creating...' : 'Create New Sheet'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="dashboard">
             {/* Header */}
             <header className="dashboard-header">
                 <div className="header-left">
-                    <div className="logo-mini">💰</div>
+                    <img src="/logo.svg" alt="" className="logo-icon" />
                     <span className="logo-text">Track your Rupee</span>
                 </div>
                 <div className="header-right">
-                    <button className="btn-icon" onClick={refreshData} disabled={isLoading} title="Refresh">
-                        <RefreshCw size={18} className={isLoading ? 'spin' : ''} />
+                    <button className="btn-quick-add" onClick={toggleQuickAdd} title="AI Quick-Add">
+                        <Zap size={16} /> Quick Add
                     </button>
                     <button className="btn-icon" onClick={toggleHelpModal} title="AI Prompts">
-                        <HelpCircle size={18} />
+                        <FileText size={18} />
+                    </button>
+                    <button className="btn-icon" onClick={refreshData} disabled={isLoading} title="Refresh">
+                        <RefreshCw size={18} className={isLoading ? 'spin' : ''} />
                     </button>
                     {user?.picture && <img src={user.picture} alt="" className="user-avatar" />}
                     <button className="btn-icon logout" onClick={logout} title="Logout">
@@ -233,104 +266,95 @@ const Dashboard = () => {
                                 </div>
                                 <div className="stat-value">{formatCurrency(stats.totalIncome)}</div>
                             </div>
-
                             <div className={`stat-card ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
                                 <div className="stat-header">
-                                    <Wallet size={20} />
+                                    <TrendingUp size={20} />
                                     <span>Balance</span>
                                 </div>
                                 <div className="stat-value">{formatCurrency(stats.balance)}</div>
-                                <div className="stat-meta">
-                                    {((stats.totalExpenses / stats.totalIncome) * 100).toFixed(0)}% spent
-                                </div>
                             </div>
                         </>
                     )}
                 </section>
 
                 {/* Charts Section */}
-                <section className={`charts-section ${activeTab !== 'overview' ? 'hide-mobile' : ''}`}>
-                    {/* Category Breakdown */}
-                    <div className="chart-card">
-                        <h3 className="chart-title">
-                            <PieChart size={18} /> Spending by Category
-                        </h3>
-                        <div className="chart-content">
-                            {Object.keys(stats.categoryBreakdown).length > 0 ? (
-                                <>
-                                    <div className="donut-container">
-                                        <Doughnut data={categoryData} options={chartOptions} />
-                                        <div className="donut-center">
-                                            <span className="donut-total">{formatCurrency(stats.totalExpenses)}</span>
-                                            <span className="donut-label">Total</span>
+                {hasData && (
+                    <section className={`charts-section ${activeTab !== 'overview' ? 'hide-mobile' : ''}`}>
+                        <div className="chart-card">
+                            <h3 className="chart-title">
+                                <PieChart size={18} /> Spending by Category
+                            </h3>
+                            <div className="chart-content">
+                                <div className="donut-container">
+                                    <Doughnut data={categoryData} options={chartOptions} />
+                                    <div className="donut-center">
+                                        <span className="donut-total">{formatCurrency(stats.totalExpenses)}</span>
+                                        <span className="donut-label">Total</span>
+                                    </div>
+                                </div>
+                                <div className="category-legend">
+                                    {stats.topCategories.map((cat, i) => (
+                                        <div key={i} className="legend-item">
+                                            <span className="legend-dot" style={{ background: getCategoryColor(cat.name) }}></span>
+                                            <span className="legend-name">{cat.name}</span>
+                                            <span className="legend-value">{formatCurrency(cat.amount)}</span>
+                                            <span className="legend-percent">{cat.percentage}%</span>
                                         </div>
-                                    </div>
-                                    <div className="category-legend">
-                                        {stats.topCategories.map((cat, i) => (
-                                            <div key={i} className="legend-item">
-                                                <span className="legend-dot" style={{ background: getCategoryColor(cat.name) }}></span>
-                                                <span className="legend-icon">{getCategoryIcon(cat.name)}</span>
-                                                <span className="legend-name">{cat.name}</span>
-                                                <span className="legend-value">{formatCurrency(cat.amount)}</span>
-                                                <span className="legend-percent">{cat.percentage}%</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="empty-chart">
-                                    <p>No expenses yet</p>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Spending Trend */}
-                    <div className="chart-card">
-                        <h3 className="chart-title">
-                            <BarChart3 size={18} /> Daily Spending Trend
-                        </h3>
-                        <div className="chart-content trend-chart">
-                            {stats.dailySpending.length > 0 ? (
+                        <div className="chart-card">
+                            <h3 className="chart-title">
+                                <BarChart3 size={18} /> Daily Trend
+                            </h3>
+                            <div className="chart-content trend-chart">
                                 <Line data={trendData} options={trendOptions} />
-                            ) : (
-                                <div className="empty-chart">
-                                    <p>Add expenses to see trend</p>
-                                </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Top Categories Bar */}
-                    <div className="chart-card full-width">
-                        <h3 className="chart-title">
-                            <BarChart3 size={18} /> Top Spending Categories
-                        </h3>
-                        <div className="chart-content bar-chart">
-                            {stats.topCategories.length > 0 ? (
-                                <Bar data={barData} options={barOptions} />
-                            ) : (
-                                <div className="empty-chart">
-                                    <p>No data yet</p>
+                        {stats.topCategories.length > 2 && (
+                            <div className="chart-card full-width">
+                                <h3 className="chart-title">
+                                    <BarChart3 size={18} /> Top Categories
+                                </h3>
+                                <div className="chart-content bar-chart">
+                                    <Bar data={barData} options={barOptions} />
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {/* Empty State */}
+                {!hasData && (
+                    <div className="empty-state-large">
+                        <Zap size={48} />
+                        <h3>No Expenses Yet</h3>
+                        <p>Use AI Quick-Add to import expenses in seconds</p>
+                        <button className="btn-quick-add-large" onClick={toggleQuickAdd}>
+                            <Zap size={20} /> AI Quick-Add
+                        </button>
+                        <button className="btn-prompts" onClick={toggleHelpModal}>
+                            View AI Prompts
+                        </button>
                     </div>
-                </section>
+                )}
 
                 {/* Transactions Section */}
-                <section className={`transactions-section ${activeTab !== 'transactions' ? 'hide-mobile' : ''}`}>
-                    <div className="section-header">
-                        <h3><Calendar size={18} /> Recent Transactions</h3>
-                        {stats.recentTransactions.length > 5 && (
-                            <button className="btn-text" onClick={() => setShowAllTransactions(!showAllTransactions)}>
-                                {showAllTransactions ? 'Show Less' : 'Show All'}
-                                {showAllTransactions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-                        )}
-                    </div>
+                {hasData && (
+                    <section className={`transactions-section ${activeTab !== 'transactions' ? 'hide-mobile' : ''}`}>
+                        <div className="section-header">
+                            <h3><Calendar size={18} /> Recent Transactions</h3>
+                            {stats.recentTransactions.length > 5 && (
+                                <button className="btn-text" onClick={() => setShowAllTransactions(!showAllTransactions)}>
+                                    {showAllTransactions ? 'Show Less' : 'Show All'}
+                                    {showAllTransactions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                            )}
+                        </div>
 
-                    {displayedTransactions.length > 0 ? (
                         <div className="transactions-list">
                             {displayedTransactions.map((item, idx) => {
                                 const originalIndex = sheetData.findIndex(d => d.id === item.id);
@@ -352,14 +376,13 @@ const Dashboard = () => {
                                                         value={editValues.item}
                                                         onChange={(e) => setEditValues({ ...editValues, item: e.target.value })}
                                                         className="edit-input"
-                                                        placeholder="Item name"
                                                     />
                                                     <input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="decimal"
                                                         value={editValues.amount}
-                                                        onChange={(e) => setEditValues({ ...editValues, amount: parseFloat(e.target.value) })}
+                                                        onChange={(e) => setEditValues({ ...editValues, amount: e.target.value })}
                                                         className="edit-input amount"
-                                                        placeholder="Amount"
                                                     />
                                                 </div>
                                                 <div className="edit-actions">
@@ -375,7 +398,7 @@ const Dashboard = () => {
                                                 <div className="transaction-info">
                                                     <span className="transaction-name">{item.item}</span>
                                                     <span className="transaction-meta">
-                                                        {item.category} {item.subcategory && `› ${item.subcategory}`} • {item.date}
+                                                        {item.category} • {item.date}
                                                     </span>
                                                 </div>
                                                 <div className="transaction-amount">
@@ -392,12 +415,8 @@ const Dashboard = () => {
                                 );
                             })}
                         </div>
-                    ) : (
-                        <div className="empty-state">
-                            <p>No transactions yet. Tap + to add your first expense!</p>
-                        </div>
-                    )}
-                </section>
+                    </section>
+                )}
             </main>
 
             {/* Floating Add Button */}
@@ -407,6 +426,7 @@ const Dashboard = () => {
 
             {/* Modals */}
             {isAddModalOpen && <AddExpenseModal onClose={toggleAddModal} />}
+            {isQuickAddOpen && <AIQuickAdd onClose={toggleQuickAdd} />}
             {isHelpModalOpen && <HelpModal onClose={toggleHelpModal} />}
         </div>
     );

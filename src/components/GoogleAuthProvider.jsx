@@ -3,7 +3,7 @@ import { GoogleOAuthProvider, useGoogleLogin, googleLogout } from '@react-oauth/
 import useStore from '../store/useStore';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const APP_SHEET_PREFIX = 'Track your Rupee';
+const APP_SHEET_NAME = 'Track your Rupee';
 
 const GoogleAuthContext = createContext(null);
 
@@ -19,22 +19,21 @@ const GoogleAuthProviderInner = ({ children }) => {
     const store = useStore();
     const {
         user,
-        isAuthenticated,
         setUser,
         logout: storeLogout,
         setSheetId,
         setCurrentView,
         setLoading,
         setSheetData,
-        sheetId: persistedSheetId,
-        sheetData: persistedData
+        setNeedsSheet,
+        sheetId: persistedSheetId
     } = store;
 
     const [isLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
 
-    // Validate that a sheet still exists and is accessible
+    // Validate that a sheet still exists
     const validateSheet = useCallback(async (token, sheetIdToValidate) => {
         try {
             const response = await fetch(
@@ -47,10 +46,10 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Find existing sheets in user's Drive
+    // Find existing sheets in Drive
     const findExistingSheets = useCallback(async (token) => {
         try {
-            const query = encodeURIComponent(`name contains '${APP_SHEET_PREFIX}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+            const query = encodeURIComponent(`name contains '${APP_SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
             const response = await fetch(
                 `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`,
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -64,7 +63,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Create a new sheet with proper headers
+    // Create a new sheet
     const createNewSheet = useCallback(async (token) => {
         try {
             const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
@@ -74,7 +73,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    properties: { title: `${APP_SHEET_PREFIX}` }
+                    properties: { title: APP_SHEET_NAME }
                 })
             });
 
@@ -133,23 +132,35 @@ const GoogleAuthProviderInner = ({ children }) => {
             return rows;
         } catch (error) {
             console.error('Error loading sheet data:', error);
+            setSheetData([]);
             return [];
         } finally {
             setLoading(false);
         }
     }, [setSheetData, setLoading]);
 
-    // Refresh data from sheet
+    // Refresh data
     const refreshData = useCallback(async () => {
         const currentSheetId = useStore.getState().sheetId;
-        if (!accessToken || !currentSheetId) return;
+        if (!accessToken || !currentSheetId) {
+            console.error('Cannot refresh: no token or sheetId');
+            return;
+        }
         await loadSheetData(accessToken, currentSheetId);
     }, [accessToken, loadSheetData]);
 
     // Add expense to sheet
     const addExpense = useCallback(async (expense) => {
         const currentSheetId = useStore.getState().sheetId;
-        if (!accessToken || !currentSheetId) return false;
+        if (!accessToken) {
+            console.error('Cannot add expense: no access token. Please sign in again.');
+            return false;
+        }
+        if (!currentSheetId) {
+            console.error('Cannot add expense: no sheet ID');
+            return false;
+        }
+
         try {
             const row = [
                 expense.date,
@@ -162,7 +173,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                 expense.month || new Date(expense.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
             ];
 
-            await fetch(
+            const response = await fetch(
                 `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/A:H:append?valueInputOption=USER_ENTERED`,
                 {
                     method: 'POST',
@@ -174,6 +185,11 @@ const GoogleAuthProviderInner = ({ children }) => {
                 }
             );
 
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
+            // Update local state
             useStore.getState().addExpense({ ...expense, id: useStore.getState().sheetData.length });
             return true;
         } catch (error) {
@@ -186,8 +202,9 @@ const GoogleAuthProviderInner = ({ children }) => {
     const updateExpense = useCallback(async (rowIndex, expense) => {
         const currentSheetId = useStore.getState().sheetId;
         if (!accessToken || !currentSheetId) return false;
+
         try {
-            const sheetRow = rowIndex + 2; // +2 for header and 0-index
+            const sheetRow = rowIndex + 2;
             const row = [
                 expense.date,
                 expense.item,
@@ -219,6 +236,24 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, [accessToken]);
 
+    // Create sheet (called from UI)
+    const createSheet = useCallback(async () => {
+        if (!accessToken) return false;
+        try {
+            setLoading(true);
+            const newSheetId = await createNewSheet(accessToken);
+            setSheetId(newSheetId);
+            setSheetData([]);
+            setNeedsSheet(false);
+            return true;
+        } catch (error) {
+            console.error('Error creating sheet:', error);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [accessToken, createNewSheet, setSheetId, setSheetData, setNeedsSheet, setLoading]);
+
     // Main login handler
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -242,35 +277,31 @@ const GoogleAuthProviderInner = ({ children }) => {
                     name: userInfo.name,
                     picture: userInfo.picture,
                     sub: userInfo.sub,
-                }, token);
+                });
 
-                // PRIORITY 1: Check if we have a persisted sheetId and validate it
+                // Check for persisted sheetId first
                 const storedSheetId = useStore.getState().sheetId;
                 if (storedSheetId) {
                     const isValid = await validateSheet(token, storedSheetId);
                     if (isValid) {
-                        console.log('Using persisted sheet:', storedSheetId);
                         await loadSheetData(token, storedSheetId);
                         setCurrentView('dashboard');
                         return;
                     }
                 }
 
-                // PRIORITY 2: Search for existing sheets in Drive
+                // Search for existing sheets
                 const existingSheets = await findExistingSheets(token);
                 if (existingSheets.length > 0) {
                     const latestSheet = existingSheets[0];
-                    console.log('Found existing sheet:', latestSheet.name, latestSheet.id);
                     setSheetId(latestSheet.id);
                     await loadSheetData(token, latestSheet.id);
                     setCurrentView('dashboard');
                     return;
                 }
 
-                // PRIORITY 3: Create new sheet only if nothing exists
-                console.log('No existing sheet found, creating new one');
-                const newSheetId = await createNewSheet(token);
-                setSheetId(newSheetId);
+                // No sheet found - prompt user
+                setNeedsSheet(true);
                 setSheetData([]);
                 setCurrentView('dashboard');
 
@@ -296,17 +327,9 @@ const GoogleAuthProviderInner = ({ children }) => {
         storeLogout();
     }, [storeLogout]);
 
-    // Session restoration - show dashboard if we have persisted data
-    useEffect(() => {
-        const state = useStore.getState();
-        if (state.user && state.sheetId && state.sheetData && state.sheetData.length > 0) {
-            setCurrentView('dashboard');
-        }
-    }, [setCurrentView]);
-
     const value = {
         user,
-        isAuthenticated: isAuthenticated || (user && persistedSheetId),
+        isAuthenticated: !!accessToken,
         isLoading,
         authError,
         login,
@@ -314,6 +337,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         refreshData,
         addExpense,
         updateExpense,
+        createSheet,
         accessToken,
     };
 

@@ -5,14 +5,14 @@ import Dashboard from './components/Dashboard';
 import './App.css';
 
 function AppContent() {
-  const { sheetId, sheetData, user } = useStore();
-  const { isLoading } = useGoogleAuth();
+  const { isAuthenticated, isLoading } = useGoogleAuth();
 
   // Show loading state during authentication
   if (isLoading) {
     return (
       <div className="app loading-screen">
         <div className="loading-content">
+          <img src="/logo.svg" alt="" className="loading-logo" />
           <div className="loading-spinner"></div>
           <p>Preparing your dashboard...</p>
         </div>
@@ -20,13 +20,9 @@ function AppContent() {
     );
   }
 
-  // Check if we have user data and sheet - show dashboard
-  // Data persists in localStorage, so refresh should retain state
-  const hasSession = user && sheetId;
-
   return (
     <div className="app">
-      {hasSession ? <Dashboard /> : <Onboarding />}
+      {isAuthenticated ? <Dashboard /> : <Onboarding />}
     </div>
   );
 }
