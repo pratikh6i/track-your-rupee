@@ -1,0 +1,112 @@
+.ai-modal {
+    max-width: 560px;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.modal-title h2 {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+}
+
+.modal-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-6);
+    line-height: 1.6;
+}
+
+.json-input-container {
+    margin-bottom: var(--space-4);
+}
+
+.json-textarea {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: var(--font-size-sm);
+    min-height: 200px;
+    line-height: 1.5;
+}
+
+.validate-btn {
+    width: 100%;
+    margin-bottom: var(--space-4);
+}
+
+.message {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    margin-bottom: var(--space-4);
+    animation: slideUp 0.3s ease;
+}
+
+.message.error {
+    background: rgba(255, 23, 68, 0.1);
+    color: var(--reentry-red-dark);
+    border: 1px solid rgba(255, 23, 68, 0.2);
+}
+
+.message.success {
+    background: rgba(0, 200, 83, 0.1);
+    color: var(--liftoff-green-dark);
+    border: 1px solid rgba(0, 200, 83, 0.2);
+}
+
+.preview-section {
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+}
+
+.preview-section h4 {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.preview-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+    background: white;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2);
+}
+
+.preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.preview-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.preview-name {
+    font-weight: 500;
+}
+
+.preview-category {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.preview-amount {
+    font-weight: 600;
+    color: var(--reentry-red);
+}

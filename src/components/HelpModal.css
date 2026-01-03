@@ -1,0 +1,80 @@
+.help-modal {
+    max-width: 700px;
+}
+
+.modal-intro {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-6);
+}
+
+.prompts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.prompt-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+}
+
+.prompt-header {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.prompt-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--gravity-blue) 0%, var(--gravity-blue-light) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.prompt-meta h3 {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+}
+
+.prompt-meta p {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+.prompt-text {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    overflow-x: auto;
+}
+
+.prompt-text pre {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-secondary);
+}
+
+.copy-btn {
+    width: 100%;
+}
+
+.copy-btn svg {
+    transition: transform var(--transition-fast);
+}
+
+.copy-btn:hover svg {
+    transform: scale(1.1);
+}

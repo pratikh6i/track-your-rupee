@@ -1,0 +1,72 @@
+.insight-cards-section {
+    margin-bottom: var(--space-8);
+}
+
+.insight-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+.insight-card {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+}
+
+.insight-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+}
+
+.insight-icon.blue {
+    background: linear-gradient(135deg, var(--gravity-blue) 0%, var(--gravity-blue-light) 100%);
+}
+
+.insight-icon.green {
+    background: linear-gradient(135deg, var(--liftoff-green) 0%, var(--liftoff-green-light) 100%);
+}
+
+.insight-icon.red {
+    background: linear-gradient(135deg, var(--reentry-red) 0%, var(--reentry-red-light) 100%);
+}
+
+.insight-icon.yellow {
+    background: linear-gradient(135deg, #FFD600 0%, #FFC107 100%);
+}
+
+.insight-icon.purple {
+    background: linear-gradient(135deg, #AA00FF 0%, #D500F9 100%);
+}
+
+.insight-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.insight-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.insight-message {
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.insight-detail {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
