@@ -86,7 +86,7 @@ const generateColor = (str) => {
 
 // Flatten subcategories map for quick lookup
 const subCategoryMap = {};
-Object.entries(CATEGORIES).forEach(([cat, data]) => {
+Object.values(CATEGORIES).forEach(data => {
     data.subcategories.forEach(sub => {
         subCategoryMap[sub] = data.color;
     });

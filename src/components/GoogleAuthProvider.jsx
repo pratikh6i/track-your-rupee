@@ -228,9 +228,10 @@ const GoogleAuthProviderInner = ({ children }) => {
         await loadSheetData(accessToken, currentSheetId);
     }, [accessToken, loadSheetData]);
 
-    // Add expense to sheet
+    // Add expense to sheet with duplicate detection
     const addExpense = useCallback(async (expense) => {
-        const currentSheetId = useStore.getState().sheetId;
+        const { sheetId: currentSheetId, sheetData } = useStore.getState();
+
         if (!accessToken) {
             console.error('Cannot add expense: no access token');
             return false;
@@ -238,6 +239,20 @@ const GoogleAuthProviderInner = ({ children }) => {
         if (!currentSheetId) {
             console.error('Cannot add expense: no sheet ID');
             return false;
+        }
+
+        // Duplicate Check Hash: Date + Amount + Item (normalized)
+        const normalize = (str) => str ? str.toLowerCase().trim() : '';
+        const newHash = `${expense.date}-${expense.amount}-${normalize(expense.item)}`;
+
+        const isDuplicate = sheetData.some(existing => {
+            const existingHash = `${existing.date}-${existing.amount}-${normalize(existing.item)}`;
+            return existingHash === newHash;
+        });
+
+        if (isDuplicate) {
+            console.warn('Duplicate expense detected, skipping:', expense.item);
+            return false; // Silently skip or notify caller
         }
 
         try {
@@ -266,7 +281,7 @@ const GoogleAuthProviderInner = ({ children }) => {
 
             if (!response.ok) throw new Error('API request failed');
 
-            useStore.getState().addExpense({ ...expense, id: useStore.getState().sheetData.length });
+            useStore.getState().addExpense({ ...expense, id: sheetData.length });
             return true;
         } catch (error) {
             console.error('Error adding expense:', error);
@@ -477,6 +492,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         };
 
         restoreSession();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const logout = useCallback(() => {
@@ -485,6 +501,51 @@ const GoogleAuthProviderInner = ({ children }) => {
         clearSession();
         storeLogout();
     }, [storeLogout]);
+
+    // Search for all spreadsheets (limit 20, recent first)
+    const searchAllSpreadsheets = useCallback(async () => {
+        if (!accessToken) return [];
+        try {
+            console.log('Fetching recent spreadsheets...');
+            const query = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+            const response = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=20&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+
+            if (!response.ok) throw new Error('Failed to fetch spreadsheets');
+            const data = await response.json();
+            return data.files || [];
+        } catch (error) {
+            console.error('Error searching spreadsheets:', error);
+            return [];
+        }
+    }, [accessToken]);
+
+    // Validate and use a specific sheet ID
+    const validateAndSetSheet = useCallback(async (sheetId) => {
+        if (!accessToken) return { success: false, error: 'Not authenticated' };
+
+        try {
+            setLoading(true);
+            const isValid = await verifySheetAccess(accessToken, sheetId);
+
+            if (isValid) {
+                setSheetId(sheetId);
+                await loadSheetData(accessToken, sheetId);
+                setNeedsSheet(false);
+                setLoading(false);
+                return { success: true };
+            } else {
+                setLoading(false);
+                return { success: false, error: 'Cannot access this sheet. Please check permissions.' };
+            }
+        } catch (error) {
+            console.error('Error validating sheet:', error);
+            setLoading(false);
+            return { success: false, error: error.message };
+        }
+    }, [accessToken, verifySheetAccess, setSheetId, loadSheetData, setNeedsSheet, setLoading]);
 
     const value = {
         user: useStore.getState().user,
@@ -497,6 +558,8 @@ const GoogleAuthProviderInner = ({ children }) => {
         addExpense,
         updateExpense,
         createSheet,
+        searchAllSpreadsheets,
+        validateAndSetSheet,
         accessToken,
     };
 

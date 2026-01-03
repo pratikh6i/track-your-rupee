@@ -4,20 +4,20 @@ import { useGoogleAuth } from './GoogleAuthProvider';
 import './Onboarding.css';
 
 const Onboarding = () => {
-    const { login, isLoading: authLoading, authError } = useGoogleAuth();
+    const { login, isLoading } = useGoogleAuth();
     const [localError, setLocalError] = useState(null);
 
     const handleGoogleLogin = async () => {
         try {
             setLocalError(null);
             await login();
-        } catch (error) {
+        } catch {
             setLocalError('Failed to sign in. Please try again.');
         }
     };
 
-    const isProcessing = authLoading;
-    const displayError = authError || localError;
+    const isProcessing = isLoading;
+    const displayError = localError;
 
     return (
         <div className="onboarding">

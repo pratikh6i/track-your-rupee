@@ -67,7 +67,7 @@ const AddExpenseModal = ({ onClose }) => {
             } else {
                 setError('Failed to add expense. Please try again.');
             }
-        } catch (err) {
+        } catch {
             setError('Something went wrong');
         } finally {
             setIsLoading(false);

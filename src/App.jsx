@@ -1,4 +1,3 @@
-import useStore from './store/useStore';
 import { GoogleAuthProvider, useGoogleAuth } from './components/GoogleAuthProvider';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';

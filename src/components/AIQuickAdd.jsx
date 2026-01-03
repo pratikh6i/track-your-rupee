@@ -1,62 +1,74 @@
-import { useState } from 'react';
-import { X, Zap, AlertCircle, Check, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Zap, AlertCircle, Check, Loader2, Upload, FileImage, ImagePlus } from 'lucide-react';
 import { useGoogleAuth } from './GoogleAuthProvider';
 import './AIQuickAdd.css';
 
 const AIQuickAdd = ({ onClose }) => {
     const { addExpense } = useGoogleAuth();
-    const [jsonInput, setJsonInput] = useState('');
     const [parsedData, setParsedData] = useState(null);
     const [error, setError] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [addedCount, setAddedCount] = useState(0);
+    const fileInputRef = useRef(null);
 
-    const parseJSON = () => {
-        setError(null);
-        setParsedData(null);
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        if (!jsonInput.trim()) {
-            setError('Please paste JSON data from AI');
+        if (file.size > 10 * 1024 * 1024) {
+            setError("File too large. Max 10MB.");
             return;
         }
 
+        analyzeImage(file);
+    };
+
+    const analyzeImage = async (file) => {
+        setIsAnalyzing(true);
+        setError(null);
+        setParsedData(null);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
         try {
-            // Try to extract JSON array from the input (in case there's extra text)
-            let jsonStr = jsonInput.trim();
+            const response = await fetch('http://127.0.0.1:5000/analyze', {
+                method: 'POST',
+                body: formData
+            });
 
-            // Find JSON array in the input
-            const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
-            if (arrayMatch) {
-                jsonStr = arrayMatch[0];
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to analyze image');
             }
 
-            const data = JSON.parse(jsonStr);
-
-            if (!Array.isArray(data)) {
-                setError('Expected a JSON array. Make sure AI returned an array of expenses.');
-                return;
-            }
-
-            if (data.length === 0) {
-                setError('No expenses found in the JSON');
-                return;
-            }
-
-            // Validate and clean each entry
-            const cleanedData = data.map((item, i) => ({
-                date: item.date || new Date().toISOString().split('T')[0],
-                item: item.item || item.description || `Item ${i + 1}`,
-                category: item.category || 'Food',
-                subcategory: item.subcategory || '',
-                amount: parseFloat(item.amount) || 0,
-                paymentMethod: item.paymentMethod || item.payment_method || 'UPI',
-                notes: item.notes || '',
-                month: new Date(item.date || Date.now()).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
-            }));
-
-            setParsedData(cleanedData);
+            parseAIResponse(data.analysis);
         } catch (err) {
-            setError(`Invalid JSON: ${err.message}. Make sure the AI response is pure JSON.`);
+            console.error(err);
+            setError(err.message === 'Failed to fetch'
+                ? 'Backend server not running. Run "python server.py" in terminal.'
+                : err.message);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const parseAIResponse = (jsonString) => {
+        try {
+            let cleanJson = jsonString.trim();
+            // Extract array if wrapped in text
+            const match = cleanJson.match(/\[[\s\S]*\]/);
+            if (match) cleanJson = match[0];
+
+            const data = JSON.parse(cleanJson);
+
+            if (!Array.isArray(data)) throw new Error("AI did not return a list of expenses");
+
+            setParsedData(data);
+        } catch (err) { // eslint-disable-line no-unused-vars
+            setError("Failed to parse AI response. Try again with a clearer image.");
         }
     };
 
@@ -68,15 +80,19 @@ const AIQuickAdd = ({ onClose }) => {
 
         try {
             for (let i = 0; i < parsedData.length; i++) {
-                await addExpense(parsedData[i]);
+                // Ensure UPI enforcement here as separate safety net
+                const expense = {
+                    ...parsedData[i],
+                    paymentMethod: 'UPI'
+                };
+                await addExpense(expense);
                 setAddedCount(i + 1);
             }
 
-            // Success - close after brief delay
             setTimeout(() => {
                 onClose();
             }, 1000);
-        } catch (err) {
+        } catch {
             setError('Failed to add some expenses. Please try again.');
         } finally {
             setIsAdding(false);
@@ -91,48 +107,55 @@ const AIQuickAdd = ({ onClose }) => {
         }).format(amount);
     };
 
-    const totalAmount = parsedData?.reduce((sum, item) => sum + item.amount, 0) || 0;
+    const totalAmount = parsedData?.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || 0;
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="ai-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2><Zap size={20} /> Quick-Add from AI</h2>
+                    <h2><Zap size={20} /> AI Bill Scanner</h2>
                     <button className="btn-close" onClick={onClose}>
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="ai-content">
-                    {!parsedData ? (
-                        <>
-                            <p className="ai-intro">
-                                Paste the JSON output from Gemini/ChatGPT below:
-                            </p>
-
-                            <textarea
-                                className="json-input"
-                                value={jsonInput}
-                                onChange={(e) => setJsonInput(e.target.value)}
-                                placeholder='[{"date": "2026-01-03", "item": "Lunch", "category": "Food", "amount": 150, ...}]'
-                                rows={8}
-                                autoFocus
+                    {!parsedData && !isAnalyzing ? (
+                        <div className="upload-section">
+                            <div
+                                className="drop-zone"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <div className="icon-circle">
+                                    <ImagePlus size={32} />
+                                </div>
+                                <p className="drop-title">Upload Bill / Receipt</p>
+                                <p className="drop-subtitle">Supports JPG, PNG (Max 10MB)</p>
+                                <button className="btn-select-file">Select Image</button>
+                            </div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/*"
+                                style={{ display: 'none' }}
                             />
-
                             {error && (
                                 <div className="error-msg">
                                     <AlertCircle size={16} /> {error}
                                 </div>
                             )}
-
-                            <button className="btn-parse" onClick={parseJSON}>
-                                <Zap size={18} /> Parse JSON
-                            </button>
-                        </>
+                        </div>
+                    ) : isAnalyzing ? (
+                        <div className="analyzing-state">
+                            <Loader2 size={48} className="spin text-primary" />
+                            <h3>Analyzing Receipt...</h3>
+                            <p>Extracting items, prices, and dates securely.</p>
+                        </div>
                     ) : (
                         <>
                             <div className="preview-header">
-                                <h3>Preview ({parsedData.length} expenses)</h3>
+                                <h3>Found {parsedData.length} Items</h3>
                                 <span className="preview-total">{formatCurrency(totalAmount)}</span>
                             </div>
 
@@ -156,15 +179,15 @@ const AIQuickAdd = ({ onClose }) => {
                             ) : addedCount === parsedData.length ? (
                                 <div className="success-status">
                                     <Check size={20} />
-                                    <span>All {addedCount} expenses added!</span>
+                                    <span>Successfully added all expenses!</span>
                                 </div>
                             ) : (
                                 <div className="preview-actions">
                                     <button className="btn-secondary" onClick={() => setParsedData(null)}>
-                                        ← Back
+                                        Retry
                                     </button>
                                     <button className="btn-add-all" onClick={addAllExpenses}>
-                                        <Check size={18} /> Add All {parsedData.length} Expenses
+                                        <Check size={18} /> Add All to Sheet
                                     </button>
                                 </div>
                             )}
