@@ -1,6 +1,9 @@
 // Category definitions with subcategories for Track your Rupee
 // Using vibrant, distinct colors for better visualization
 
+// Category definitions with subcategories for Track your Rupee
+// Using vibrant, distinct colors for better visualization
+
 export const CATEGORIES = {
     Food: {
         color: '#FF5722', // Vibrant Orange
@@ -16,40 +19,35 @@ export const CATEGORIES = {
         icon: '🚗',
         subcategories: ['Petrol', 'Auto', 'Cab', 'Bus', 'Train', 'Metro', 'Parking', 'Toll']
     },
-    'Essentials/Personal Care': {
+    'Essentials': {
         color: '#2196F3', // Blue
         icon: '🧴',
-        subcategories: ['Toiletries', 'Medicine', 'Haircut', 'Laundry', 'Other']
+        subcategories: ['Toiletries', 'Medicine', 'Haircut', 'Laundry', 'Personal Care', 'Stationery', 'Household', 'Other']
     },
     'Telecommunications': {
         color: '#9C27B0', // Purple
         icon: '📱',
         subcategories: ['Mobile Recharge', 'Internet', 'DTH', 'Subscriptions']
     },
-    'Family Spent': {
+    'Family': {
         color: '#E91E63', // Pink
         icon: '👨‍👩‍👧',
         subcategories: ['Parents', 'Siblings', 'Kids', 'Relatives', 'Other']
     },
-    'Gifts/Donations': {
+    'Gifts & Donations': {
         color: '#FFEB3B', // Yellow
         icon: '🎁',
         subcategories: ['Birthday', 'Wedding', 'Charity', 'Religious', 'Other']
     },
-    'Trip/Entry Fees': {
+    'Travel': {
         color: '#4CAF50', // Green
         icon: '✈️',
         subcategories: ['Travel', 'Hotel', 'Entry Tickets', 'Activities', 'Food on Trip']
     },
-    'Medical': {
+    'Health': {
         color: '#F44336', // Red
         icon: '🏥',
-        subcategories: ['Doctor', 'Medicine', 'Tests', 'Insurance', 'Other']
-    },
-    'BRIBE': {
-        color: '#607D8B', // Blue Grey
-        icon: '💸',
-        subcategories: []
+        subcategories: ['Doctor', 'Medicine', 'Tests', 'Insurance', 'Healthcare', 'Other']
     },
     'Entertainment': {
         color: '#673AB7', // Deep Purple
@@ -73,17 +71,67 @@ export const CATEGORIES = {
     }
 };
 
+// Generate a consistent, vibrant color for a string
+const generateColor = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // High saturation (65-85%), Lightness (45-60%) for visibility
+    const h = Math.abs(hash % 360);
+    const s = 75;
+    const l = 55;
+    return `hsl(${h}, ${s}%, ${l}%)`;
+};
+
+// Flatten subcategories map for quick lookup
+const subCategoryMap = {};
+Object.entries(CATEGORIES).forEach(([cat, data]) => {
+    data.subcategories.forEach(sub => {
+        subCategoryMap[sub] = data.color;
+    });
+});
+
 // Get all category names
 export const getCategoryNames = () => Object.keys(CATEGORIES);
 
 // Get subcategories for a category
 export const getSubcategories = (category) => CATEGORIES[category]?.subcategories || [];
 
-// Get category color
-export const getCategoryColor = (category) => CATEGORIES[category]?.color || '#78909C';
+// Get category color with smart fallback
+export const getCategoryColor = (category) => {
+    if (!category) return '#94A3B8'; // Slate 400
+
+    // 1. Direct match
+    if (CATEGORIES[category]) return CATEGORIES[category].color;
+
+    // 2. Subcategory match
+    if (subCategoryMap[category]) return subCategoryMap[category];
+
+    // 3. Known mappings (normalize)
+    const normalized = category.toLowerCase().trim();
+    if (normalized.includes('food') || normalized.includes('grocery')) return CATEGORIES.Food.color;
+    if (normalized.includes('health') || normalized.includes('medical')) return CATEGORIES.Health.color;
+    if (normalized.includes('travel') || normalized.includes('trip')) return CATEGORIES.Travel.color;
+    if (normalized.includes('bill') || normalized.includes('utility')) return CATEGORIES['Bills & Utilities'].color;
+    if (normalized.includes('essential')) return CATEGORIES.Essentials.color;
+
+    // 4. Fallback: Generate consistent vibrant color
+    return generateColor(category);
+};
 
 // Get category icon
-export const getCategoryIcon = (category) => CATEGORIES[category]?.icon || '📦';
+export const getCategoryIcon = (category) => {
+    if (CATEGORIES[category]) return CATEGORIES[category].icon;
+    // Basic heuristics for unknown categories
+    const lower = category?.toLowerCase() || '';
+    if (lower.includes('food') || lower.includes('eat')) return '🍽️';
+    if (lower.includes('travel') || lower.includes('trip')) return '✈️';
+    if (lower.includes('health') || lower.includes('med')) return '🏥';
+    if (lower.includes('shop')) return '🛍️';
+    if (lower.includes('bill')) return '💡';
+    return '₹';
+};
 
 // Get all colors for charts
 export const getCategoryColors = () => Object.values(CATEGORIES).map(c => c.color);
