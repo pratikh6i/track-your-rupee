@@ -3,7 +3,13 @@ import { GoogleOAuthProvider, useGoogleLogin, googleLogout } from '@react-oauth/
 import useStore from '../store/useStore';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const APP_SHEET_NAME = 'Track your Rupee';
+const APP_SHEET_PREFIX = 'Track your Rupee';
+
+// Generate unique sheet name using user email
+const getUniqueSheetName = (email) => {
+    const emailPrefix = email ? email.split('@')[0] : 'user';
+    return `${APP_SHEET_PREFIX} - ${emailPrefix}`;
+};
 
 const GoogleAuthContext = createContext(null);
 
@@ -31,13 +37,53 @@ const GoogleAuthProviderInner = ({ children }) => {
     const [authError, setAuthError] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
 
-    // Find ALL sheets owned by user with "Track your Rupee" in name
-    const findExistingSheets = useCallback(async (token) => {
+    // Verify if a specific sheet exists and is accessible
+    const verifySheetAccess = useCallback(async (token, sheetIdToVerify) => {
+        if (!sheetIdToVerify) return false;
         try {
-            // Search for any spreadsheet with our app name - broader search
-            const query = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name contains 'Track your Rupee' and trashed=false`);
             const response = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
+                `https://sheets.googleapis.com/v4/spreadsheets/${sheetIdToVerify}?fields=spreadsheetId,properties.title`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✓ Verified existing sheet:', data.properties?.title, sheetIdToVerify);
+                return true;
+            }
+            console.log('✗ Sheet not accessible:', sheetIdToVerify);
+            return false;
+        } catch (error) {
+            console.error('Error verifying sheet:', error);
+            return false;
+        }
+    }, []);
+
+    // Find sheets owned by user - first try exact user-specific name, then fallback
+    const findExistingSheets = useCallback(async (token, userEmail) => {
+        try {
+            // First try to find sheet with unique user-specific name
+            const uniqueName = getUniqueSheetName(userEmail);
+            console.log('Searching for sheet:', uniqueName);
+
+            const exactQuery = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name='${uniqueName}' and trashed=false`);
+            let response = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=${exactQuery}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.files && data.files.length > 0) {
+                    console.log('✓ Found exact match sheet:', data.files[0].name);
+                    return data.files;
+                }
+            }
+
+            // Fallback: search for any sheet with our app prefix (for migration from old versions)
+            console.log('No exact match, searching for any Track your Rupee sheets...');
+            const fallbackQuery = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name contains '${APP_SHEET_PREFIX}' and trashed=false`);
+            response = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=${fallbackQuery}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -47,7 +93,7 @@ const GoogleAuthProviderInner = ({ children }) => {
             }
 
             const data = await response.json();
-            console.log('Found sheets:', data.files);
+            console.log('Found sheets (fallback):', data.files?.length || 0);
             return data.files || [];
         } catch (error) {
             console.error('Error searching for sheets:', error);
@@ -55,9 +101,12 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Create a new sheet with proper headers
-    const createNewSheet = useCallback(async (token) => {
+    // Create a new sheet with proper headers and unique user name
+    const createNewSheet = useCallback(async (token, userEmail) => {
         try {
+            const sheetName = getUniqueSheetName(userEmail);
+            console.log('Creating new sheet:', sheetName);
+
             const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
                 method: 'POST',
                 headers: {
@@ -65,7 +114,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    properties: { title: APP_SHEET_NAME }
+                    properties: { title: sheetName }
                 })
             });
 
@@ -88,7 +137,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                 }
             );
 
-            console.log('Created new sheet:', newSheetId);
+            console.log('✓ Created new sheet:', sheetName, newSheetId);
             return newSheetId;
         } catch (error) {
             console.error('Error creating sheet:', error);
@@ -233,10 +282,11 @@ const GoogleAuthProviderInner = ({ children }) => {
 
     // Create sheet (called from UI when user confirms)
     const createSheet = useCallback(async () => {
+        const userEmail = useStore.getState().user?.email;
         if (!accessToken) return false;
         try {
             setLoading(true);
-            const newSheetId = await createNewSheet(accessToken);
+            const newSheetId = await createNewSheet(accessToken, userEmail);
             setSheetId(newSheetId);
             setSheetData([]);
             setNeedsSheet(false);
@@ -274,21 +324,37 @@ const GoogleAuthProviderInner = ({ children }) => {
                     sub: userInfo.sub,
                 });
 
-                // ALWAYS search Drive for existing sheets first (cross-device support)
-                console.log('Searching for existing sheets...');
-                const existingSheets = await findExistingSheets(token);
+                // Step 1: Check if we have a persisted sheetId that's still valid
+                const persistedSheetId = useStore.getState().sheetId;
+                if (persistedSheetId) {
+                    console.log('Checking persisted sheet ID:', persistedSheetId);
+                    const isValid = await verifySheetAccess(token, persistedSheetId);
+                    if (isValid) {
+                        console.log('✓ Using persisted sheet ID');
+                        await loadSheetData(token, persistedSheetId);
+                        setNeedsSheet(false);
+                        setCurrentView('dashboard');
+                        return; // Exit early - we have a valid sheet
+                    } else {
+                        console.log('✗ Persisted sheet ID is invalid, will search Drive');
+                    }
+                }
+
+                // Step 2: Search Drive for existing sheets with user's email
+                console.log('Searching Drive for existing sheets...');
+                const existingSheets = await findExistingSheets(token, userInfo.email);
 
                 if (existingSheets.length > 0) {
                     // Use the most recently modified sheet
                     const latestSheet = existingSheets[0];
-                    console.log('Using existing sheet:', latestSheet.name, latestSheet.id);
+                    console.log('✓ Using existing sheet:', latestSheet.name, latestSheet.id);
                     setSheetId(latestSheet.id);
                     await loadSheetData(token, latestSheet.id);
                     setNeedsSheet(false);
                     setCurrentView('dashboard');
                 } else {
                     // No sheet found - prompt user to create
-                    console.log('No existing sheet found');
+                    console.log('No existing sheet found - will prompt to create');
                     setNeedsSheet(true);
                     setSheetData([]);
                     setCurrentView('dashboard');
