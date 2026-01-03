@@ -10,22 +10,50 @@
 }
 
 :root {
-  /* Colors */
-  --bg-dark: #0f0f1a;
-  --bg-card: rgba(255, 255, 255, 0.03);
-  --border-subtle: rgba(255, 255, 255, 0.05);
+  /* Heavenly Theme Colors */
+  --bg-dark: #F8FAFC;
+  /* Light gray-blue background */
+  --bg-gradient: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  /* Soft sky gradient */
+  --bg-card: rgba(255, 255, 255, 0.7);
+  /* Glassmorphism card */
+  --bg-card-hover: rgba(255, 255, 255, 0.9);
 
+  --border-subtle: rgba(148, 163, 184, 0.1);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --shadow-glow: 0 0 20px rgba(56, 189, 248, 0.15);
+
+  /* Brand Colors - Fresh & Professional */
+  --primary: #0EA5E9;
+  /* Sky Blue */
+  --primary-light: #38BDF8;
+  --secondary: #6366F1;
+  /* Indigo */
+
+  /* Functional Colors */
   --green: #10B981;
   --green-light: #34D399;
-  --red: #EF4444;
-  --red-light: #F87171;
+  --red: #F43F5E;
+  --red-light: #FB7185;
   --blue: #3B82F6;
   --yellow: #F59E0B;
+  --purple: #8B5CF6;
+  --pink: #EC4899;
+  --indigo: #6366F1;
+  --teal: #14B8A6;
+  --orange: #F97316;
 
-  --text-primary: #FFFFFF;
-  --text-secondary: #E5E7EB;
-  --text-muted: #9CA3AF;
-  --text-dim: #6B7280;
+  /* Text Colors */
+  --text-primary: #1E293B;
+  /* Slate 800 */
+  --text-secondary: #475569;
+  /* Slate 600 */
+  --text-muted: #94A3B8;
+  /* Slate 400 */
+  --text-dim: #CBD5E1;
+  /* Slate 300 */
+  --text-inverse: #FFFFFF;
 
   /* Spacing */
   --space-1: 0.25rem;
@@ -43,8 +71,8 @@
   --radius-xl: 24px;
 
   /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition-base: 0.2s ease;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html {
