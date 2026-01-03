@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { GoogleOAuthProvider, useGoogleLogin, googleLogout } from '@react-oauth/google';
 import useStore from '../store/useStore';
 
@@ -18,44 +18,36 @@ export const useGoogleAuth = () => {
 const GoogleAuthProviderInner = ({ children }) => {
     const store = useStore();
     const {
-        user,
         setUser,
         logout: storeLogout,
         setSheetId,
         setCurrentView,
         setLoading,
         setSheetData,
-        setNeedsSheet,
-        sheetId: persistedSheetId
+        setNeedsSheet
     } = store;
 
     const [isLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
 
-    // Validate that a sheet still exists
-    const validateSheet = useCallback(async (token, sheetIdToValidate) => {
-        try {
-            const response = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${sheetIdToValidate}?fields=properties.title`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            return response.ok;
-        } catch {
-            return false;
-        }
-    }, []);
-
-    // Find existing sheets in Drive
+    // Find ALL sheets owned by user with "Track your Rupee" in name
     const findExistingSheets = useCallback(async (token) => {
         try {
-            const query = encodeURIComponent(`name contains '${APP_SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+            // Search for any spreadsheet with our app name - broader search
+            const query = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name contains 'Track your Rupee' and trashed=false`);
             const response = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`,
+                `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            if (!response.ok) return [];
+
+            if (!response.ok) {
+                console.error('Drive API error:', response.status);
+                return [];
+            }
+
             const data = await response.json();
+            console.log('Found sheets:', data.files);
             return data.files || [];
         } catch (error) {
             console.error('Error searching for sheets:', error);
@@ -63,7 +55,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Create a new sheet
+    // Create a new sheet with proper headers
     const createNewSheet = useCallback(async (token) => {
         try {
             const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
@@ -96,6 +88,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                 }
             );
 
+            console.log('Created new sheet:', newSheetId);
             return newSheetId;
         } catch (error) {
             console.error('Error creating sheet:', error);
@@ -103,7 +96,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Load sheet data
+    // Load sheet data from a specific sheet
     const loadSheetData = useCallback(async (token, sheetIdToLoad) => {
         try {
             setLoading(true);
@@ -112,7 +105,11 @@ const GoogleAuthProviderInner = ({ children }) => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            if (!response.ok) throw new Error('Failed to load sheet data');
+            if (!response.ok) {
+                console.error('Failed to load sheet data:', response.status);
+                throw new Error('Failed to load sheet data');
+            }
+
             const data = await response.json();
             const values = data.values || [];
 
@@ -128,6 +125,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                 month: row[7] || ''
             }));
 
+            console.log('Loaded', rows.length, 'rows from sheet');
             setSheetData(rows);
             return rows;
         } catch (error) {
@@ -139,7 +137,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, [setSheetData, setLoading]);
 
-    // Refresh data
+    // Refresh data from current sheet
     const refreshData = useCallback(async () => {
         const currentSheetId = useStore.getState().sheetId;
         if (!accessToken || !currentSheetId) {
@@ -153,7 +151,7 @@ const GoogleAuthProviderInner = ({ children }) => {
     const addExpense = useCallback(async (expense) => {
         const currentSheetId = useStore.getState().sheetId;
         if (!accessToken) {
-            console.error('Cannot add expense: no access token. Please sign in again.');
+            console.error('Cannot add expense: no access token');
             return false;
         }
         if (!currentSheetId) {
@@ -185,11 +183,8 @@ const GoogleAuthProviderInner = ({ children }) => {
                 }
             );
 
-            if (!response.ok) {
-                throw new Error('API request failed');
-            }
+            if (!response.ok) throw new Error('API request failed');
 
-            // Update local state
             useStore.getState().addExpense({ ...expense, id: useStore.getState().sheetData.length });
             return true;
         } catch (error) {
@@ -236,7 +231,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, [accessToken]);
 
-    // Create sheet (called from UI)
+    // Create sheet (called from UI when user confirms)
     const createSheet = useCallback(async () => {
         if (!accessToken) return false;
         try {
@@ -279,31 +274,25 @@ const GoogleAuthProviderInner = ({ children }) => {
                     sub: userInfo.sub,
                 });
 
-                // Check for persisted sheetId first
-                const storedSheetId = useStore.getState().sheetId;
-                if (storedSheetId) {
-                    const isValid = await validateSheet(token, storedSheetId);
-                    if (isValid) {
-                        await loadSheetData(token, storedSheetId);
-                        setCurrentView('dashboard');
-                        return;
-                    }
-                }
-
-                // Search for existing sheets
+                // ALWAYS search Drive for existing sheets first (cross-device support)
+                console.log('Searching for existing sheets...');
                 const existingSheets = await findExistingSheets(token);
+
                 if (existingSheets.length > 0) {
+                    // Use the most recently modified sheet
                     const latestSheet = existingSheets[0];
+                    console.log('Using existing sheet:', latestSheet.name, latestSheet.id);
                     setSheetId(latestSheet.id);
                     await loadSheetData(token, latestSheet.id);
+                    setNeedsSheet(false);
                     setCurrentView('dashboard');
-                    return;
+                } else {
+                    // No sheet found - prompt user to create
+                    console.log('No existing sheet found');
+                    setNeedsSheet(true);
+                    setSheetData([]);
+                    setCurrentView('dashboard');
                 }
-
-                // No sheet found - prompt user
-                setNeedsSheet(true);
-                setSheetData([]);
-                setCurrentView('dashboard');
 
             } catch (error) {
                 console.error('Login error:', error);
@@ -318,7 +307,7 @@ const GoogleAuthProviderInner = ({ children }) => {
             setAuthLoading(false);
             setAuthError('Failed to sign in with Google. Please try again.');
         },
-        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly',
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
     });
 
     const logout = useCallback(() => {
@@ -328,7 +317,7 @@ const GoogleAuthProviderInner = ({ children }) => {
     }, [storeLogout]);
 
     const value = {
-        user,
+        user: useStore.getState().user,
         isAuthenticated: !!accessToken,
         isLoading,
         authError,
@@ -362,7 +351,7 @@ export const GoogleAuthProvider = ({ children }) => {
                 color: 'white'
             }}>
                 <div>
-                    <h2 style={{ marginBottom: '1rem' }}>⚙️ Configuration Required</h2>
+                    <h2 style={{ marginBottom: '1rem' }}>Configuration Required</h2>
                     <p>Please set VITE_GOOGLE_CLIENT_ID in your .env file</p>
                 </div>
             </div>
