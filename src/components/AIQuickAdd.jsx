@@ -1,74 +1,95 @@
-import { useState, useRef } from 'react';
-import { X, Zap, AlertCircle, Check, Loader2, Upload, FileImage, ImagePlus } from 'lucide-react';
+import { useState } from 'react';
+import { X, Zap, AlertCircle, Check, Loader2, Copy, ExternalLink } from 'lucide-react';
 import { useGoogleAuth } from './GoogleAuthProvider';
+import useStore from '../store/useStore';
 import './AIQuickAdd.css';
 
 const AIQuickAdd = ({ onClose }) => {
     const { addExpense } = useGoogleAuth();
+    const { sheetData } = useStore();
+    const [jsonInput, setJsonInput] = useState('');
     const [parsedData, setParsedData] = useState(null);
     const [error, setError] = useState(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [addedCount, setAddedCount] = useState(0);
-    const fileInputRef = useRef(null);
+    const [skippedCount, setSkippedCount] = useState(0);
 
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const SAMPLE_PROMPT = `Analyze this bill image and extract expenses as a JSON array. Each object must have:
+- "date": "YYYY-MM-DD"
+- "item": "Short description"
+- "category": "Food/Travel/Shopping/Bills/Entertainment/Health/Other"
+- "amount": Number (no currency symbol)
+- "paymentMethod": "UPI"
+- "notes": "Vendor name"
 
-        if (file.size > 10 * 1024 * 1024) {
-            setError("File too large. Max 10MB.");
-            return;
-        }
+Return ONLY the JSON array, no markdown.`;
 
-        analyzeImage(file);
+    const copyPrompt = () => {
+        navigator.clipboard.writeText(SAMPLE_PROMPT);
     };
 
-    const analyzeImage = async (file) => {
-        setIsAnalyzing(true);
+    // Duplicate check using hash
+    const isDuplicate = (expense) => {
+        const normalize = (str) => str ? str.toLowerCase().trim() : '';
+        const newHash = `${expense.date}-${expense.amount}-${normalize(expense.item)}`;
+
+        return sheetData.some(existing => {
+            const existingHash = `${existing.date}-${existing.amount}-${normalize(existing.item)}`;
+            return existingHash === newHash;
+        });
+    };
+
+    const parseJSON = () => {
         setError(null);
         setParsedData(null);
 
-        const formData = new FormData();
-        formData.append('file', file);
+        if (!jsonInput.trim()) {
+            setError('Please paste JSON data from AI');
+            return;
+        }
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/analyze', {
-                method: 'POST',
-                body: formData
-            });
+            let jsonStr = jsonInput.trim();
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to analyze image');
+            // Extract JSON array from response
+            const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+                jsonStr = arrayMatch[0];
             }
 
-            parseAIResponse(data.analysis);
-        } catch (err) {
-            console.error(err);
-            setError(err.message === 'Failed to fetch'
-                ? 'Backend server not running. Run "python server.py" in terminal.'
-                : err.message);
-        } finally {
-            setIsAnalyzing(false);
-        }
-    };
+            const data = JSON.parse(jsonStr);
 
-    const parseAIResponse = (jsonString) => {
-        try {
-            let cleanJson = jsonString.trim();
-            // Extract array if wrapped in text
-            const match = cleanJson.match(/\[[\s\S]*\]/);
-            if (match) cleanJson = match[0];
+            if (!Array.isArray(data)) {
+                setError('Expected a JSON array. Make sure AI returned an array of expenses.');
+                return;
+            }
 
-            const data = JSON.parse(cleanJson);
+            if (data.length === 0) {
+                setError('No expenses found in the JSON');
+                return;
+            }
 
-            if (!Array.isArray(data)) throw new Error("AI did not return a list of expenses");
+            // Validate and clean each entry
+            const cleanedData = data.map((item, i) => ({
+                date: item.date || new Date().toISOString().split('T')[0],
+                item: item.item || item.description || `Item ${i + 1}`,
+                category: item.category || 'Food',
+                subcategory: item.subcategory || '',
+                amount: parseFloat(item.amount) || 0,
+                paymentMethod: 'UPI', // Always UPI
+                notes: item.notes || '',
+                month: new Date(item.date || Date.now()).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+            }));
 
-            setParsedData(data);
-        } catch (err) { // eslint-disable-line no-unused-vars
-            setError("Failed to parse AI response. Try again with a clearer image.");
+            // Mark duplicates
+            const dataWithDuplicateFlag = cleanedData.map(item => ({
+                ...item,
+                isDuplicate: isDuplicate(item)
+            }));
+
+            setParsedData(dataWithDuplicateFlag);
+        } catch {
+            setError('Invalid JSON format. Make sure the AI response is pure JSON.');
         }
     };
 
@@ -77,26 +98,28 @@ const AIQuickAdd = ({ onClose }) => {
 
         setIsAdding(true);
         setAddedCount(0);
+        setSkippedCount(0);
 
-        try {
-            for (let i = 0; i < parsedData.length; i++) {
-                // Ensure UPI enforcement here as separate safety net
-                const expense = {
-                    ...parsedData[i],
-                    paymentMethod: 'UPI'
-                };
-                await addExpense(expense);
-                setAddedCount(i + 1);
+        let added = 0;
+        let skipped = 0;
+
+        for (let i = 0; i < parsedData.length; i++) {
+            const item = parsedData[i];
+            if (item.isDuplicate) {
+                skipped++;
+                setSkippedCount(skipped);
+            } else {
+                await addExpense(item);
+                added++;
+                setAddedCount(added);
             }
-
-            setTimeout(() => {
-                onClose();
-            }, 1000);
-        } catch {
-            setError('Failed to add some expenses. Please try again.');
-        } finally {
-            setIsAdding(false);
         }
+
+        setTimeout(() => {
+            onClose();
+        }, 1500);
+
+        setIsAdding(false);
     };
 
     const formatCurrency = (amount) => {
@@ -107,51 +130,56 @@ const AIQuickAdd = ({ onClose }) => {
         }).format(amount);
     };
 
-    const totalAmount = parsedData?.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || 0;
+    const totalAmount = parsedData?.reduce((sum, item) => sum + (item.isDuplicate ? 0 : item.amount), 0) || 0;
+    const duplicateCount = parsedData?.filter(item => item.isDuplicate).length || 0;
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="ai-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2><Zap size={20} /> AI Bill Scanner</h2>
+                    <h2><Zap size={20} /> AI Quick Add</h2>
                     <button className="btn-close" onClick={onClose}>
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="ai-content">
-                    {!parsedData && !isAnalyzing ? (
-                        <div className="upload-section">
-                            <div
-                                className="drop-zone"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <div className="icon-circle">
-                                    <ImagePlus size={32} />
+                    {!parsedData ? (
+                        <>
+                            <div className="ai-instructions">
+                                <h4>How to use:</h4>
+                                <ol>
+                                    <li>Open <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer">Gemini <ExternalLink size={12} /></a> or ChatGPT</li>
+                                    <li>Upload your bill/receipt image</li>
+                                    <li>Use this prompt:</li>
+                                </ol>
+                                <div className="prompt-box">
+                                    <pre>{SAMPLE_PROMPT}</pre>
+                                    <button className="btn-copy" onClick={copyPrompt} title="Copy prompt">
+                                        <Copy size={14} />
+                                    </button>
                                 </div>
-                                <p className="drop-title">Upload Bill / Receipt</p>
-                                <p className="drop-subtitle">Supports JPG, PNG (Max 10MB)</p>
-                                <button className="btn-select-file">Select Image</button>
+                                <p>Then paste the JSON response below:</p>
                             </div>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                accept="image/*"
-                                style={{ display: 'none' }}
+
+                            <textarea
+                                className="json-input"
+                                value={jsonInput}
+                                onChange={(e) => setJsonInput(e.target.value)}
+                                placeholder='[{"date": "2026-01-04", "item": "Lunch", "category": "Food", "amount": 150, ...}]'
+                                rows={6}
                             />
+
                             {error && (
                                 <div className="error-msg">
                                     <AlertCircle size={16} /> {error}
                                 </div>
                             )}
-                        </div>
-                    ) : isAnalyzing ? (
-                        <div className="analyzing-state">
-                            <Loader2 size={48} className="spin text-primary" />
-                            <h3>Analyzing Receipt...</h3>
-                            <p>Extracting items, prices, and dates securely.</p>
-                        </div>
+
+                            <button className="btn-parse" onClick={parseJSON} disabled={!jsonInput.trim()}>
+                                <Zap size={18} /> Parse JSON
+                            </button>
+                        </>
                     ) : (
                         <>
                             <div className="preview-header">
@@ -159,11 +187,21 @@ const AIQuickAdd = ({ onClose }) => {
                                 <span className="preview-total">{formatCurrency(totalAmount)}</span>
                             </div>
 
+                            {duplicateCount > 0 && (
+                                <div className="duplicate-warning">
+                                    <AlertCircle size={14} />
+                                    {duplicateCount} duplicate(s) will be skipped
+                                </div>
+                            )}
+
                             <div className="preview-list">
                                 {parsedData.map((item, i) => (
-                                    <div key={i} className="preview-item">
+                                    <div key={i} className={`preview-item ${item.isDuplicate ? 'duplicate' : ''}`}>
                                         <div className="preview-info">
-                                            <span className="preview-name">{item.item}</span>
+                                            <span className="preview-name">
+                                                {item.item}
+                                                {item.isDuplicate && <span className="dup-badge">DUPLICATE</span>}
+                                            </span>
                                             <span className="preview-meta">{item.category} • {item.date}</span>
                                         </div>
                                         <span className="preview-amount">{formatCurrency(item.amount)}</span>
@@ -174,20 +212,21 @@ const AIQuickAdd = ({ onClose }) => {
                             {isAdding ? (
                                 <div className="adding-status">
                                     <Loader2 size={20} className="spin" />
-                                    <span>Adding {addedCount}/{parsedData.length}...</span>
+                                    <span>Adding {addedCount}/{parsedData.length - duplicateCount}...</span>
+                                    {skippedCount > 0 && <span className="skipped">({skippedCount} skipped)</span>}
                                 </div>
-                            ) : addedCount === parsedData.length ? (
+                            ) : addedCount > 0 ? (
                                 <div className="success-status">
                                     <Check size={20} />
-                                    <span>Successfully added all expenses!</span>
+                                    <span>Added {addedCount} expenses! {skippedCount > 0 && `(${skippedCount} skipped)`}</span>
                                 </div>
                             ) : (
                                 <div className="preview-actions">
                                     <button className="btn-secondary" onClick={() => setParsedData(null)}>
-                                        Retry
+                                        ← Back
                                     </button>
                                     <button className="btn-add-all" onClick={addAllExpenses}>
-                                        <Check size={18} /> Add All to Sheet
+                                        <Check size={18} /> Add {parsedData.length - duplicateCount} Expenses
                                     </button>
                                 </div>
                             )}

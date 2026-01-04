@@ -34,6 +34,9 @@ const useStore = create(
       isAddModalOpen: false,
       editingTransaction: null,
 
+      // Settings
+      budget: 11000, // Default monthly budget
+
       // Actions - Auth
       setUser: (user) => set({
         user,
@@ -87,6 +90,7 @@ const useStore = create(
       toggleHelpModal: () => set((state) => ({ isHelpModalOpen: !state.isHelpModalOpen })),
       toggleAddModal: () => set((state) => ({ isAddModalOpen: !state.isAddModalOpen })),
       setEditingTransaction: (transaction) => set({ editingTransaction: transaction }),
+      setBudget: (budget) => set({ budget }),
 
       // Computed values (getters)
       getStats: () => {
@@ -192,6 +196,7 @@ const useStore = create(
       // ONLY persist sheetId and user - NOT the data
       partialize: (state) => ({
         sheetId: state.sheetId,
+        budget: state.budget,
         user: state.user ? { email: state.user.email, name: state.user.name, picture: state.user.picture } : null
       })
     }

@@ -8,23 +8,26 @@ import {
     BarChart, Bar
 } from 'recharts';
 import {
-    Plus, RefreshCw, LogOut, TrendingUp, TrendingDown, LayoutDashboard,
-    Link as LinkIcon, FileSpreadsheet, XCircle
+    Plus, RefreshCw, TrendingUp, TrendingDown, LayoutDashboard,
+    Link as LinkIcon, FileSpreadsheet, XCircle, Target
 } from 'lucide-react';
 import AddExpenseModal from './AddExpenseModal';
 import AIQuickAdd from './AIQuickAdd';
 import HelpModal from './HelpModal';
 import SheetPickerModal from './SheetPickerModal';
+import ProfileMenu from './ProfileMenu';
+import SettingsModal from './SettingsModal';
 import { getCategoryColor, getCategoryIcon } from '../data/categories';
 
 const Dashboard = () => {
-    const { sheetData, needsSheet } = useStore();
-    const { logout, refreshData, createSheet, validateAndSetSheet, isLoading } = useGoogleAuth();
+    const { sheetData, needsSheet, budget } = useStore();
+    const { refreshData, createSheet, validateAndSetSheet, isLoading } = useGoogleAuth();
 
     // UI State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isAIOpen, setIsAIOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isSheetPickerOpen, setIsSheetPickerOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -35,13 +38,10 @@ const Dashboard = () => {
 
     // --- Logic ---
 
-    // Handle manual link submission
     const handleLinkSubmit = async (e) => {
         e.preventDefault();
         setLinkError(null);
 
-        // Extract ID from URL
-        // https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit...
         const match = sheetLinkInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
         const extractedId = match ? match[1] : sheetLinkInput;
 
@@ -71,6 +71,19 @@ const Dashboard = () => {
         return { income, expense, balance: income - expense };
     }, [sheetData]);
 
+    // Calculate current month's expenses for budget
+    const currentMonthExpense = useMemo(() => {
+        const now = new Date();
+        const currentMonth = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+        return sheetData
+            .filter(item => item.category !== 'Income' && item.month === currentMonth)
+            .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    }, [sheetData]);
+
+    const budgetPercentage = Math.min(Math.round((currentMonthExpense / budget) * 100), 100);
+    const budgetStatus = budgetPercentage >= 90 ? 'critical' : budgetPercentage >= 70 ? 'warning' : 'good';
+
     const categoryData = useMemo(() => {
         const expenses = sheetData.filter(item => item.category !== 'Income');
         const grouped = expenses.reduce((acc, item) => {
@@ -92,7 +105,6 @@ const Dashboard = () => {
             return acc;
         }, {});
 
-        // Take last 14 active days
         return Object.entries(grouped)
             .map(([date, amount]) => ({ date, amount }))
             .slice(0, 14)
@@ -121,9 +133,7 @@ const Dashboard = () => {
                         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-icon" />
                         <h1>Track your Rupee</h1>
                     </div>
-                    <button className="btn-icon" onClick={logout}>
-                        <LogOut size={20} />
-                    </button>
+                    <ProfileMenu onOpenSettings={() => setIsSettingsOpen(true)} onOpenHelp={() => setIsHelpOpen(true)} />
                 </header>
 
                 <div className="no-sheet-prompt">
@@ -135,7 +145,6 @@ const Dashboard = () => {
                         <p>We couldn't automatically find your expense sheet. Choose an option below:</p>
 
                         <div className="sheet-options">
-                            {/* Option 1: Create New */}
                             <div className="option-block">
                                 <button className="btn-primary create-btn" onClick={createSheet} disabled={isLoading}>
                                     {isLoading ? 'Creating...' : 'Create New Sheet'}
@@ -145,7 +154,6 @@ const Dashboard = () => {
 
                             <div className="divider"><span>OR</span></div>
 
-                            {/* Option 2: Browse Existing */}
                             <div className="option-block">
                                 <button
                                     className="btn-secondary browse-btn"
@@ -157,7 +165,6 @@ const Dashboard = () => {
                                 </button>
                             </div>
 
-                            {/* Option 3: Paste Link */}
                             <form onSubmit={handleLinkSubmit} className="link-form">
                                 <div className="input-group">
                                     <LinkIcon size={16} className="input-icon" />
@@ -186,6 +193,8 @@ const Dashboard = () => {
                 {isSheetPickerOpen && (
                     <SheetPickerModal onClose={() => setIsSheetPickerOpen(false)} />
                 )}
+                {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+                {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
             </div>
         );
     }
@@ -202,12 +211,7 @@ const Dashboard = () => {
                     <button className="btn-icon" onClick={refreshData} title="Refresh Data">
                         <RefreshCw size={20} />
                     </button>
-                    <button className="btn-icon" onClick={logout} title="Logout">
-                        <LogOut size={20} />
-                    </button>
-                    <button className="btn-help" onClick={() => setIsHelpOpen(true)}>
-                        AI Tips
-                    </button>
+                    <ProfileMenu onOpenSettings={() => setIsSettingsOpen(true)} onOpenHelp={() => setIsHelpOpen(true)} />
                 </div>
             </header>
 
@@ -219,7 +223,6 @@ const Dashboard = () => {
                             <span className="stat-label">Total Balance</span>
                             <div className="trend up">
                                 <TrendingUp size={16} />
-                                <span>+2.5%</span>
                             </div>
                         </div>
                         <div className="stat-value">{formatCurrency(stats.balance)}</div>
@@ -241,6 +244,29 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <div className="stat-value">{formatCurrency(stats.expense)}</div>
+                    </div>
+                </div>
+
+                {/* Budget Progress */}
+                <div className="budget-card glass-card">
+                    <div className="budget-header">
+                        <div className="budget-title">
+                            <Target size={18} />
+                            <span>Monthly Budget</span>
+                        </div>
+                        <span className={`budget-status ${budgetStatus}`}>
+                            {formatCurrency(currentMonthExpense)} / {formatCurrency(budget)}
+                        </span>
+                    </div>
+                    <div className="budget-bar">
+                        <div
+                            className={`budget-fill ${budgetStatus}`}
+                            style={{ width: `${budgetPercentage}%` }}
+                        ></div>
+                    </div>
+                    <div className="budget-footer">
+                        <span>{budgetPercentage}% used</span>
+                        <span>{formatCurrency(budget - currentMonthExpense)} remaining</span>
                     </div>
                 </div>
 
@@ -384,7 +410,7 @@ const Dashboard = () => {
                                 <p>No transactions found for this selection.</p>
                             </div>
                         ) : (
-                            filteredTransactions.slice().reverse().map((item, index) => (
+                            filteredTransactions.slice().reverse().slice(0, 10).map((item, index) => (
                                 <div key={index} className="transaction-item">
                                     <div className="t-icon" style={{ backgroundColor: `${getCategoryColor(item.category)}20`, color: getCategoryColor(item.category) }}>
                                         {getCategoryIcon(item.category)}
@@ -420,9 +446,10 @@ const Dashboard = () => {
                 <span className="hide-mobile">Quick Add</span>
             </button>
 
-            <AddExpenseModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
-            <AIQuickAdd isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
-            <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+            {isAddModalOpen && <AddExpenseModal onClose={() => setIsAddModalOpen(false)} />}
+            {isAIOpen && <AIQuickAdd onClose={() => setIsAIOpen(false)} />}
+            {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
+            {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
         </div>
     );
 };
