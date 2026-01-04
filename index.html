@@ -7,6 +7,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Track your Rupee - A smart expense tracker powered by Google Sheets and AI" />
   <meta name="theme-color" content="#2962FF" />
+
+  <!-- Security: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;
+    connect-src 'self' https://sheets.googleapis.com https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com;
+    img-src 'self' data: https://lh3.googleusercontent.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    frame-src https://accounts.google.com;
+  ">
+
   <title>Track your Rupee | Expense Tracker</title>
 </head>
 

@@ -14,17 +14,17 @@ const getUniqueSheetName = (email) => {
     return `${APP_SHEET_PREFIX} - ${emailPrefix}`;
 };
 
-// Session storage helpers
+// Session storage helpers - using sessionStorage for better security
 const saveSession = (token) => {
     const expiry = Date.now() + SESSION_DURATION_MS;
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-    localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
-    console.log('✓ Session saved, expires in 1 hour');
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+    sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+    console.log('✓ Session saved (sessionStorage), expires in 1 hour or when tab closes');
 };
 
 const getStoredSession = () => {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+    const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
 
     if (!token || !expiry) return null;
 
@@ -39,8 +39,8 @@ const getStoredSession = () => {
 };
 
 const clearSession = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
 };
 
 const GoogleAuthContext = createContext(null);
