@@ -509,23 +509,27 @@ const GoogleAuthProviderInner = ({ children }) => {
                             setLoading(true);
                             await loadSheetData(token, latestSheetId);
 
-                            // Load Settings (Budget & Webhook)
+                            // Load Settings (Budget, Webhook, Gemini Key)
                             try {
                                 const settingsRes = await fetch(
-                                    `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B3`,
+                                    `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B4`,
                                     { headers: { Authorization: `Bearer ${token}` } }
                                 );
                                 if (settingsRes.ok) {
                                     const settingsData = await settingsRes.json();
                                     const rows = settingsData.values || [];
                                     if (rows.length > 0) {
-                                        // Row 1 (Index 0 in response if A2 start): Budget
+                                        // Row 2 (Index 0): Budget
                                         if (rows[0] && rows[0][1]) {
                                             useStore.getState().setBudget(parseInt(rows[0][1]) || 11000);
                                         }
-                                        // Row 2 (Index 1): Webhook
+                                        // Row 3 (Index 1): Webhook
                                         if (rows[1] && rows[1][1]) {
                                             useStore.getState().setWebhookUrl(rows[1][1]);
+                                        }
+                                        // Row 4 (Index 2): Gemini API Key
+                                        if (rows[2] && rows[2][1]) {
+                                            useStore.getState().setGeminiApiKey(rows[2][1]);
                                         }
                                     }
                                 }
@@ -551,7 +555,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                         // Load Settings
                         try {
                             const settingsRes = await fetch(
-                                `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B3`,
+                                `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B4`,
                                 { headers: { Authorization: `Bearer ${token}` } }
                             );
                             if (settingsRes.ok) {
@@ -559,6 +563,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                                 const rows = settingsData.values || [];
                                 if (rows[0] && rows[0][1]) useStore.getState().setBudget(parseInt(rows[0][1]) || 11000);
                                 if (rows[1] && rows[1][1]) useStore.getState().setWebhookUrl(rows[1][1]);
+                                if (rows[2] && rows[2][1]) useStore.getState().setGeminiApiKey(rows[2][1]);
                             }
                         } catch (e) { console.log('Settings load failed'); }
 

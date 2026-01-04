@@ -1,0 +1,147 @@
+/* Profile Modal Styles */
+
+.profile-modal {
+    background: white;
+    width: 450px;
+    max-width: 95vw;
+    border-radius: var(--radius-lg);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+}
+
+.profile-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.profile-intro {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    padding: 0.75rem;
+    background: #F0F9FF;
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--blue);
+}
+
+.profile-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.profile-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.currency-input {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.currency-input:focus-within {
+    border-color: var(--blue);
+}
+
+.currency-input .currency-symbol {
+    background: #F1F5F9;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border-subtle);
+}
+
+.currency-input input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    outline: none;
+    width: 100%;
+}
+
+.field-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.profile-summary {
+    background: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 100%);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-top: 0.5rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary-row span:first-child {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.summary-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--green);
+}
+
+.status-msg {
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-msg.success {
+    background: #ECFDF5;
+    color: #059669;
+}
+
+.status-msg.error {
+    background: #FEF2F2;
+    color: #DC2626;
+}
+
+.btn-save {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-save:hover:not(:disabled) {
+    background: var(--blue-dark);
+}
+
+.btn-save:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}

@@ -9,17 +9,19 @@ import {
 } from 'recharts';
 import {
     Plus, RefreshCw, TrendingUp, TrendingDown, FileSpreadsheet,
-    Link as LinkIcon, XCircle, Target, LogOut
+    Link as LinkIcon, XCircle, Target, LogOut, Camera, User
 } from 'lucide-react';
 import AddExpenseModal from './AddExpenseModal';
 import AIQuickAdd from './AIQuickAdd';
 import HelpModal from './HelpModal';
 import SheetPickerModal from './SheetPickerModal';
 import SettingsModal from './SettingsModal';
+import ProfileModal from './ProfileModal';
+import BillScanner from './BillScanner';
 import { getCategoryColor, getCategoryIcon } from '../data/categories';
 
 const Dashboard = () => {
-    const { sheetData, needsSheet, budget, user } = useStore();
+    const { sheetData, needsSheet, budget, user, monthlySalary, otherGains, currentBalance } = useStore();
     const { logout, refreshData, createSheet, validateAndSetSheet, isLoading } = useGoogleAuth();
 
     // UI State
@@ -29,6 +31,9 @@ const Dashboard = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isSheetPickerOpen, setIsSheetPickerOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     // Link Input State
     const [sheetLinkInput, setSheetLinkInput] = useState('');
@@ -205,7 +210,33 @@ const Dashboard = () => {
                         ⚙️
                     </button>
                     {user?.picture && (
-                        <img src={user.picture} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+                        <div className="avatar-wrapper">
+                            <img
+                                src={user.picture}
+                                alt=""
+                                className="user-avatar clickable"
+                                referrerPolicy="no-referrer"
+                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                            />
+                            {showProfileMenu && (
+                                <div className="profile-dropdown">
+                                    <div className="profile-info">
+                                        <strong>{user.name}</strong>
+                                        <span>{user.email}</span>
+                                    </div>
+                                    <button onClick={() => { setIsProfileOpen(true); setShowProfileMenu(false); }}>
+                                        <User size={14} /> Edit Profile
+                                    </button>
+                                    <button onClick={() => { setIsSettingsOpen(true); setShowProfileMenu(false); }}>
+                                        ⚙️ Settings
+                                    </button>
+                                    <hr />
+                                    <button onClick={logout} className="logout-btn">
+                                        <LogOut size={14} /> Sign Out
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                     <button className="btn-icon logout" onClick={logout} title="Sign out">
                         <LogOut size={18} />
@@ -376,6 +407,9 @@ const Dashboard = () => {
             </main>
 
             {/* FABs */}
+            <button className="fab fab-scan" onClick={() => setIsScannerOpen(true)} title="Scan Bill">
+                <Camera size={22} />
+            </button>
             <button className="fab" onClick={() => setIsAddModalOpen(true)}>
                 <Plus size={24} />
             </button>
@@ -388,6 +422,8 @@ const Dashboard = () => {
             {isAIOpen && <AIQuickAdd onClose={() => setIsAIOpen(false)} />}
             {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
             {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+            {isProfileOpen && <ProfileModal onClose={() => setIsProfileOpen(false)} />}
+            {isScannerOpen && <BillScanner onClose={() => setIsScannerOpen(false)} />}
         </div>
     );
 };

@@ -39,6 +39,15 @@ const useStore = create(
       webhookUrl: '', // Google Chat Webhook URL
       lastAlertLevel: 0, // Last alert level sent (0, 25, 50, 75, 90, 100)
 
+      // Profile
+      monthlySalary: 0,
+      otherGains: 0,
+      currentBalance: 0,
+
+      // Gemini AI
+      geminiApiKey: '',
+      geminiRequestCount: 0, // For model rotation
+
       // Actions - Auth
       setUser: (user) => set({
         user,
@@ -95,6 +104,21 @@ const useStore = create(
       setBudget: (budget) => set({ budget }),
       setWebhookUrl: (url) => set({ webhookUrl: url }),
       setLastAlertLevel: (level) => set({ lastAlertLevel: level }),
+
+      // Profile setters
+      setMonthlySalary: (salary) => set({ monthlySalary: salary }),
+      setOtherGains: (gains) => set({ otherGains: gains }),
+      setCurrentBalance: (balance) => set({ currentBalance: balance }),
+      setProfile: (profile) => set({
+        monthlySalary: profile.monthlySalary ?? 0,
+        otherGains: profile.otherGains ?? 0,
+        currentBalance: profile.currentBalance ?? 0
+      }),
+
+      // Gemini setters
+      setGeminiApiKey: (key) => set({ geminiApiKey: key }),
+      incrementGeminiRequestCount: () => set((state) => ({ geminiRequestCount: state.geminiRequestCount + 1 })),
+      resetGeminiRequestCount: () => set({ geminiRequestCount: 0 }),
 
       // Computed values (getters)
       getStats: () => {
@@ -203,6 +227,11 @@ const useStore = create(
         budget: state.budget,
         webhookUrl: state.webhookUrl,
         lastAlertLevel: state.lastAlertLevel,
+        monthlySalary: state.monthlySalary,
+        otherGains: state.otherGains,
+        currentBalance: state.currentBalance,
+        geminiApiKey: state.geminiApiKey,
+        geminiRequestCount: state.geminiRequestCount,
         user: state.user ? { email: state.user.email, name: state.user.name, picture: state.user.picture } : null
       })
     }
