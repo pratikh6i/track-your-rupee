@@ -175,7 +175,7 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
                                 {
                                     inline_data: {
                                         mime_type: 'image/jpeg',
-                                        data: base64Image
+                                        data: imageData
                                     }
                                 }
                             ]
