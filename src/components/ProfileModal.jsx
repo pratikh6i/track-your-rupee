@@ -8,8 +8,8 @@ const ProfileModal = ({ onClose }) => {
     const { accessToken } = useGoogleAuth();
     const {
         sheetId,
-        monthlySalary, otherGains, currentBalance,
-        setMonthlySalary, setOtherGains, setCurrentBalance,
+        monthlySalary, otherGains, currentBalance, invested,
+        setMonthlySalary, setOtherGains, setCurrentBalance, setInvested,
         budget, setBudget,
         webhookUrl, setWebhookUrl,
         geminiApiKey, setGeminiApiKey
@@ -19,6 +19,7 @@ const ProfileModal = ({ onClose }) => {
     const [localSalary, setLocalSalary] = useState(monthlySalary || 0);
     const [localGains, setLocalGains] = useState(otherGains || 0);
     const [localBalance, setLocalBalance] = useState(currentBalance || 0);
+    const [localInvested, setLocalInvested] = useState(invested || 0);
 
     // Settings fields
     const [localBudget, setLocalBudget] = useState(budget || 11000);
@@ -36,10 +37,11 @@ const ProfileModal = ({ onClose }) => {
         setLocalSalary(monthlySalary || 0);
         setLocalGains(otherGains || 0);
         setLocalBalance(currentBalance || 0);
+        setLocalInvested(invested || 0);
         setLocalBudget(budget || 11000);
         setLocalWebhook(webhookUrl || '');
         setLocalGeminiKey(geminiApiKey || '');
-    }, [monthlySalary, otherGains, currentBalance, budget, webhookUrl, geminiApiKey]);
+    }, [monthlySalary, otherGains, currentBalance, invested, budget, webhookUrl, geminiApiKey]);
 
     const testWebhook = async () => {
         if (!localWebhook) return;
@@ -47,27 +49,26 @@ const ProfileModal = ({ onClose }) => {
         setTestStatus(null);
 
         try {
-            // Google Chat webhooks block browser CORS requests
-            // We'll try with no-cors (opaque response) - message may still be sent
-            const response = await fetch(localWebhook, {
+            // Use a CORS proxy to make the webhook request work from browser
+            const proxyUrl = 'https://corsproxy.io/?';
+            const response = await fetch(proxyUrl + encodeURIComponent(localWebhook), {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text: `✅ *Test Alert from Track your Rupee*\nYour webhook is configured correctly!\nTime: ${new Date().toLocaleString('en-IN')}`
                 })
             });
-            // no-cors means we can't read response status
-            // If no error thrown, assume it worked
-            setTestStatus({
-                type: 'success',
-                msg: '✓ Request sent! Check your Google Chat space. (If no message appears, verify the webhook URL is correct)'
-            });
+
+            if (response.ok) {
+                setTestStatus({ type: 'success', msg: '✓ Test message sent! Check your Google Chat.' });
+            } else {
+                setTestStatus({ type: 'error', msg: '✗ Webhook returned error. Check URL.' });
+            }
         } catch (error) {
             console.error('Webhook error:', error);
             setTestStatus({
                 type: 'error',
-                msg: '✗ Network error. Ensure the URL is correct and accessible.'
+                msg: '✗ Network error. Ensure the URL is correct.'
             });
         } finally {
             setIsTestingWebhook(false);

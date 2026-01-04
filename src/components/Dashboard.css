@@ -384,17 +384,29 @@
     padding: 1.5rem;
 }
 
-/* Stats Grid - 4 cards like reference */
+/* Stats Grid - 5 cards */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 450px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -436,6 +448,16 @@
 
 .stat-card.opening .stat-value {
     color: #1D4ED8;
+}
+
+/* Income - Cyan */
+.stat-card.income {
+    border-left-color: #06B6D4;
+    background: linear-gradient(135deg, #ECFEFF 0%, #CFFAFE 100%);
+}
+
+.stat-card.income .stat-value {
+    color: #0891B2;
 }
 
 /* Closing Balance - Green */

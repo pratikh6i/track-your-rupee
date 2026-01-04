@@ -43,6 +43,7 @@ const useStore = create(
       monthlySalary: 0,
       otherGains: 0,
       currentBalance: 0,
+      invested: 0, // Amount invested in stocks, SIPs, etc.
 
       // Gemini AI
       geminiApiKey: '',
@@ -109,6 +110,7 @@ const useStore = create(
       setMonthlySalary: (salary) => set({ monthlySalary: salary }),
       setOtherGains: (gains) => set({ otherGains: gains }),
       setCurrentBalance: (balance) => set({ currentBalance: balance }),
+      setInvested: (amount) => set({ invested: amount }),
       setProfile: (profile) => set({
         monthlySalary: profile.monthlySalary ?? 0,
         otherGains: profile.otherGains ?? 0,
@@ -230,6 +232,7 @@ const useStore = create(
         monthlySalary: state.monthlySalary,
         otherGains: state.otherGains,
         currentBalance: state.currentBalance,
+        invested: state.invested,
         geminiApiKey: state.geminiApiKey,
         geminiRequestCount: state.geminiRequestCount,
         user: state.user ? { email: state.user.email, name: state.user.name, picture: state.user.picture } : null

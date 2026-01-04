@@ -64,30 +64,36 @@ const Dashboard = () => {
     };
 
     const stats = useMemo(() => {
-        const income = sheetData
-            .filter(item => item.category === 'Income')
+        // Get current month
+        const now = new Date();
+        const currentMonth = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+        // Total Expenses this month (excluding Income category)
+        const totalExpenses = sheetData
+            .filter(item => item.category !== 'Income' && item.month === currentMonth)
             .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
-        const expense = sheetData
-            .filter(item => item.category !== 'Income')
-            .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        // Income = Monthly Salary + Other Gains (from Profile, default 0)
+        const income = (monthlySalary || 0) + (otherGains || 0);
 
-        // Use profile data for better insights
-        const totalIncome = (monthlySalary || 0) + (otherGains || 0);
+        // Opening Balance = User's account balance at start of month
         const openingBalance = currentBalance || 0;
-        const savings = totalIncome - expense;
-        const closingBalance = openingBalance + savings;
+
+        // Closing Balance = Opening Balance - Total Expenses
+        const closingBalance = openingBalance - totalExpenses;
+
+        // Savings = Budget - Spent (how much from budget is saved)
+        const savings = (budget || 0) - totalExpenses;
 
         return {
-            income: totalIncome > 0 ? totalIncome : income,
-            expense,
-            balance: closingBalance > 0 ? closingBalance : income - expense,
+            income,
+            totalExpenses,
             openingBalance,
             closingBalance,
             savings,
-            transactionIncome: income
+            spent: totalExpenses
         };
-    }, [sheetData, monthlySalary, otherGains, currentBalance]);
+    }, [sheetData, monthlySalary, otherGains, currentBalance, budget]);
 
     // Calculate current month's expenses for budget
     const currentMonthExpense = useMemo(() => {
@@ -116,17 +122,37 @@ const Dashboard = () => {
     }, [sheetData]);
 
     const dailyTrendData = useMemo(() => {
-        const expenses = sheetData.filter(item => item.category !== 'Income');
-        const grouped = expenses.reduce((acc, item) => {
-            const date = item.date ? new Date(item.date).toLocaleDateString('en-GB') : 'Unknown';
-            acc[date] = (acc[date] || 0) + (parseFloat(item.amount) || 0);
-            return acc;
-        }, {});
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const today = now.getDate();
 
-        return Object.entries(grouped)
-            .map(([date, amount]) => ({ date, amount }))
-            .slice(0, 14)
-            .reverse();
+        // Create array for all days from 1st to today
+        const allDays = [];
+        for (let day = 1; day <= today; day++) {
+            const date = new Date(currentYear, currentMonth, day);
+            allDays.push({
+                date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+                fullDate: date.toISOString().split('T')[0],
+                amount: 0
+            });
+        }
+
+        // Sum expenses by date
+        sheetData
+            .filter(item => item.category !== 'Income')
+            .forEach(item => {
+                if (!item.date) return;
+                const itemDate = new Date(item.date);
+                if (itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear) {
+                    const dayIndex = itemDate.getDate() - 1;
+                    if (allDays[dayIndex]) {
+                        allDays[dayIndex].amount += parseFloat(item.amount) || 0;
+                    }
+                }
+            });
+
+        return allDays;
     }, [sheetData]);
 
     const filteredTransactions = useMemo(() => {
@@ -257,25 +283,29 @@ const Dashboard = () => {
             </header>
 
             <main className="dashboard-main">
-                {/* Stats Grid - 4 Cards like reference */}
+                {/* Stats Grid - 5 Cards */}
                 <div className="stats-grid">
                     <div className="stat-card opening">
                         <div className="stat-value">{formatCurrency(stats.openingBalance)}</div>
                         <div className="stat-label">Opening Balance</div>
                     </div>
-                    <div className="stat-card closing">
-                        <div className="stat-value">{formatCurrency(stats.closingBalance)}</div>
-                        <div className="stat-label">Closing Balance</div>
+                    <div className="stat-card income">
+                        <div className="stat-value">{formatCurrency(stats.income)}</div>
+                        <div className="stat-label">Income</div>
                     </div>
                     <div className="stat-card expense">
-                        <div className="stat-value">{formatCurrency(stats.expense)}</div>
-                        <div className="stat-label">Total Expenses</div>
+                        <div className="stat-value">{formatCurrency(stats.spent)}</div>
+                        <div className="stat-label">Spent</div>
                     </div>
                     <div className="stat-card savings">
                         <div className="stat-value" style={{ color: stats.savings >= 0 ? '#10B981' : '#EF4444' }}>
                             {formatCurrency(Math.abs(stats.savings))}
                         </div>
                         <div className="stat-label">{stats.savings >= 0 ? 'Savings' : 'Overspent'}</div>
+                    </div>
+                    <div className="stat-card closing">
+                        <div className="stat-value">{formatCurrency(stats.closingBalance)}</div>
+                        <div className="stat-label">Closing Balance</div>
                     </div>
                 </div>
 
