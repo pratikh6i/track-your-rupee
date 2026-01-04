@@ -95,24 +95,26 @@ export const CATEGORIES = {
 
 // Track dynamically assigned colors for unknown categories
 const dynamicColorAssignments = new Map();
-let nextColorIndex = Object.keys(CATEGORIES).length;
+let nextColorIndex = 0;  // Start from 0 to use all colors
 
 /**
- * Generate a unique, high-contrast color for a new category
+ * Generate a unique, high-contrast color for any category or subcategory
  * Uses Golden Angle distribution to maximize visual distinction
- * @param {string} category - Category name
+ * @param {string} category - Category/subcategory name
  * @returns {string} - Hex color code
  */
-const getNextDistinctColor = (category) => {
+const getDistinctColor = (category) => {
+    const key = category.toLowerCase().trim();
+
     // Check if we've already assigned a color to this category
-    if (dynamicColorAssignments.has(category)) {
-        return dynamicColorAssignments.get(category);
+    if (dynamicColorAssignments.has(key)) {
+        return dynamicColorAssignments.get(key);
     }
 
     // Pick from pre-defined distinct colors if available
     if (nextColorIndex < DISTINCT_COLORS.length) {
         const color = DISTINCT_COLORS[nextColorIndex];
-        dynamicColorAssignments.set(category, color);
+        dynamicColorAssignments.set(key, color);
         nextColorIndex++;
         return color;
     }
@@ -124,18 +126,16 @@ const getNextDistinctColor = (category) => {
 
     // Keep saturation high (70%) and lightness good for white bg (50%)
     const color = `hsl(${Math.round(hue)}, 70%, 50%)`;
-    dynamicColorAssignments.set(category, color);
+    dynamicColorAssignments.set(key, color);
     nextColorIndex++;
 
     return color;
 };
 
-// Flatten subcategories map for quick lookup
-const subCategoryMap = {};
+// Pre-assign colors to main categories so they're consistent
 Object.entries(CATEGORIES).forEach(([catName, data]) => {
-    data.subcategories.forEach(sub => {
-        subCategoryMap[sub.toLowerCase()] = data.color;
-    });
+    dynamicColorAssignments.set(catName.toLowerCase(), data.color);
+    nextColorIndex = Math.max(nextColorIndex, 12); // Reserve first 12 for main categories
 });
 
 // Get all category names
@@ -144,33 +144,22 @@ export const getCategoryNames = () => Object.keys(CATEGORIES);
 // Get subcategories for a category
 export const getSubcategories = (category) => CATEGORIES[category]?.subcategories || [];
 
-// Get category color with smart fallback
+// Get category color - EACH unique name gets its own color
 export const getCategoryColor = (category) => {
     if (!category) return '#94A3B8'; // Slate 400 for null/undefined
 
-    // 1. Direct match
+    const key = category.toLowerCase().trim();
+
+    // 1. Direct match to main category (use defined color)
     if (CATEGORIES[category]) return CATEGORIES[category].color;
 
     // 2. Case-insensitive category match
-    const lowerCat = category.toLowerCase().trim();
     for (const [catName, data] of Object.entries(CATEGORIES)) {
-        if (catName.toLowerCase() === lowerCat) return data.color;
+        if (catName.toLowerCase() === key) return data.color;
     }
 
-    // 3. Subcategory match
-    if (subCategoryMap[lowerCat]) return subCategoryMap[lowerCat];
-
-    // 4. Known mappings (normalize common terms)
-    if (lowerCat.includes('food') || lowerCat.includes('grocery')) return CATEGORIES.Food.color;
-    if (lowerCat.includes('health') || lowerCat.includes('medical')) return CATEGORIES.Health.color;
-    if (lowerCat.includes('travel') || lowerCat.includes('trip')) return CATEGORIES.Travel.color;
-    if (lowerCat.includes('bill') || lowerCat.includes('utility')) return CATEGORIES['Bills & Utilities'].color;
-    if (lowerCat.includes('essential')) return CATEGORIES.Essentials.color;
-    if (lowerCat.includes('transport') || lowerCat.includes('fuel')) return CATEGORIES.Transportation.color;
-    if (lowerCat.includes('shop') || lowerCat.includes('cloth')) return CATEGORIES.Shopping.color;
-
-    // 5. Dynamic fallback: Assign a new distinct color
-    return getNextDistinctColor(category);
+    // 3. Everything else (including subcategories) gets its own unique color
+    return getDistinctColor(category);
 };
 
 // Get category icon
@@ -178,12 +167,14 @@ export const getCategoryIcon = (category) => {
     if (CATEGORIES[category]) return CATEGORIES[category].icon;
     // Basic heuristics for unknown categories
     const lower = category?.toLowerCase() || '';
-    if (lower.includes('food') || lower.includes('eat')) return '🍽️';
+    if (lower.includes('food') || lower.includes('eat') || lower.includes('grocery')) return '🍽️';
     if (lower.includes('travel') || lower.includes('trip')) return '✈️';
-    if (lower.includes('health') || lower.includes('med')) return '🏥';
-    if (lower.includes('shop')) return '🛍️';
-    if (lower.includes('bill')) return '💡';
-    if (lower.includes('transport') || lower.includes('fuel')) return '🚗';
+    if (lower.includes('health') || lower.includes('med') || lower.includes('care')) return '🏥';
+    if (lower.includes('shop') || lower.includes('cloth')) return '🛍️';
+    if (lower.includes('bill') || lower.includes('electric')) return '💡';
+    if (lower.includes('transport') || lower.includes('fuel') || lower.includes('petrol')) return '🚗';
+    if (lower.includes('station')) return '📝';
+    if (lower.includes('house')) return '🏠';
     return '📁';
 };
 
