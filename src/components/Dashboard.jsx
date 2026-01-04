@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
     Plus, RefreshCw, TrendingUp, TrendingDown, FileSpreadsheet,
-    Link as LinkIcon, XCircle, Target, LogOut, Camera, User
+    Link as LinkIcon, XCircle, Target, LogOut, Camera, User, Sparkles
 } from 'lucide-react';
 import AddExpenseModal from './AddExpenseModal';
 import AIQuickAdd from './AIQuickAdd';
@@ -203,11 +203,12 @@ const Dashboard = () => {
                     <span className="logo-text">Dashboard</span>
                 </div>
                 <div className="header-right">
+                    <button className="btn-quick-add" onClick={() => setIsAIOpen(true)} title="Quick Add with AI">
+                        <Sparkles size={16} />
+                        <span>Quick Add</span>
+                    </button>
                     <button className="btn-icon" onClick={refreshData} title="Refresh Data">
                         <RefreshCw size={18} />
-                    </button>
-                    <button className="btn-icon" onClick={() => setIsSettingsOpen(true)} title="Settings">
-                        ⚙️
                     </button>
                     {user?.picture && (
                         <div className="avatar-wrapper">
@@ -225,10 +226,7 @@ const Dashboard = () => {
                                         <span>{user.email}</span>
                                     </div>
                                     <button onClick={() => { setIsProfileOpen(true); setShowProfileMenu(false); }}>
-                                        <User size={14} /> Edit Profile
-                                    </button>
-                                    <button onClick={() => { setIsSettingsOpen(true); setShowProfileMenu(false); }}>
-                                        ⚙️ Settings
+                                        <User size={14} /> Edit Profile & Settings
                                     </button>
                                     <hr />
                                     <button onClick={logout} className="logout-btn">
@@ -412,9 +410,6 @@ const Dashboard = () => {
             </button>
             <button className="fab" onClick={() => setIsAddModalOpen(true)}>
                 <Plus size={24} />
-            </button>
-            <button className="fab-ai" onClick={() => setIsAIOpen(true)}>
-                ✨ <span className="fab-text">Quick Add</span>
             </button>
 
             {/* Modals */}

@@ -218,14 +218,52 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, [setSheetData, setLoading]);
 
-    // Refresh data from current sheet
+    // Refresh data from current sheet AND settings
     const refreshData = useCallback(async () => {
         const currentSheetId = useStore.getState().sheetId;
         if (!accessToken || !currentSheetId) {
             console.error('Cannot refresh: no token or sheetId');
             return;
         }
+
+        // Refresh transaction data
         await loadSheetData(accessToken, currentSheetId);
+
+        // Also refresh settings from Sheet (Budget, Webhook, Gemini Key)
+        try {
+            const settingsRes = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/Settings!A2:B4`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (settingsRes.ok) {
+                const settingsData = await settingsRes.json();
+                const rows = settingsData.values || [];
+                if (rows[0] && rows[0][1]) useStore.getState().setBudget(parseInt(rows[0][1]) || 11000);
+                if (rows[1] && rows[1][1]) useStore.getState().setWebhookUrl(rows[1][1]);
+                if (rows[2] && rows[2][1]) useStore.getState().setGeminiApiKey(rows[2][1]);
+                console.log('✓ Settings refreshed from Sheet');
+            }
+        } catch (e) {
+            console.log('Settings sheet may not exist');
+        }
+
+        // Also refresh profile data
+        try {
+            const profileRes = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/Profile!A2:B4`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                const rows = profileData.values || [];
+                if (rows[0] && rows[0][1]) useStore.getState().setMonthlySalary(parseInt(rows[0][1]) || 0);
+                if (rows[1] && rows[1][1]) useStore.getState().setOtherGains(parseInt(rows[1][1]) || 0);
+                if (rows[2] && rows[2][1]) useStore.getState().setCurrentBalance(parseInt(rows[2][1]) || 0);
+                console.log('✓ Profile refreshed from Sheet');
+            }
+        } catch (e) {
+            console.log('Profile sheet may not exist');
+        }
     }, [accessToken, loadSheetData]);
 
     // Add expense to sheet with duplicate detection

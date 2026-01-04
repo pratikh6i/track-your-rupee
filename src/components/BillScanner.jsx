@@ -315,16 +315,21 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
                             {imagePreview ? (
                                 <div className="image-preview">
                                     <img src={imagePreview} alt="Bill preview" />
-                                    <button
-                                        className="btn-retake"
-                                        onClick={() => {
-                                            setImagePreview(null);
-                                            setImageData(null);
-                                            fileInputRef.current.value = '';
-                                        }}
-                                    >
-                                        Retake
-                                    </button>
+                                    <div className="preview-overlay">
+                                        <p>📷 Image captured! Review and proceed.</p>
+                                    </div>
+                                    <div className="preview-actions">
+                                        <button
+                                            className="btn-retake"
+                                            onClick={() => {
+                                                setImagePreview(null);
+                                                setImageData(null);
+                                                fileInputRef.current.value = '';
+                                            }}
+                                        >
+                                            ↻ Retake
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="capture-area">
@@ -392,7 +397,7 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
                             {!geminiApiKey && (
                                 <div className="api-warning">
                                     <AlertCircle size={16} />
-                                    Add your Gemini API key in Settings to use AI scanning
+                                    Add your Gemini API key in Profile to use AI scanning
                                 </div>
                             )}
                         </>
