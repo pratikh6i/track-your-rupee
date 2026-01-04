@@ -47,19 +47,28 @@ const ProfileModal = ({ onClose }) => {
         setTestStatus(null);
 
         try {
-            // Use no-cors mode for Google Chat webhooks (they don't return CORS headers)
-            await fetch(localWebhook, {
+            // Google Chat webhooks block browser CORS requests
+            // We'll try with no-cors (opaque response) - message may still be sent
+            const response = await fetch(localWebhook, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
                 body: JSON.stringify({
-                    text: `✅ *Test Alert Success!* \nYour Track your Rupee webhook is configured correctly.`
+                    text: `✅ *Test Alert from Track your Rupee*\nYour webhook is configured correctly!\nTime: ${new Date().toLocaleString('en-IN')}`
                 })
             });
-            // With no-cors, we can't read the response, so assume success
-            setTestStatus({ type: 'success', msg: '✓ Test message sent! Check your Google Chat.' });
+            // no-cors means we can't read response status
+            // If no error thrown, assume it worked
+            setTestStatus({
+                type: 'success',
+                msg: '✓ Request sent! Check your Google Chat space. (If no message appears, verify the webhook URL is correct)'
+            });
         } catch (error) {
-            setTestStatus({ type: 'error', msg: '✗ Failed to send. Check URL.' });
+            console.error('Webhook error:', error);
+            setTestStatus({
+                type: 'error',
+                msg: '✗ Network error. Ensure the URL is correct and accessible.'
+            });
         } finally {
             setIsTestingWebhook(false);
         }

@@ -29,39 +29,30 @@ const getGeminiModel = (count) => {
 // Master prompt for bill extraction
 const BILL_EXTRACTION_PROMPT = `You are an expert bill/receipt OCR system. Analyze this image and extract expense data.
 
+IMPORTANT: You MUST respond with ONLY valid JSON. No text, no markdown, no code blocks, no explanation. JUST THE JSON ARRAY.
+
 CRITICAL RULES:
-1. If the image is NOT a bill/receipt (e.g., a random photo, meme, screenshot), return EXACTLY: {"error": "not_a_bill", "message": "This doesn't appear to be a bill or receipt"}
-2. If the image is too blurry or unreadable, return EXACTLY: {"error": "blurry", "message": "Image is too blurry. Please retake with better lighting"}
-3. If successful, return a JSON array of expense items.
+1. If image is NOT a bill/receipt: {"error": "not_a_bill", "message": "This doesn't appear to be a bill or receipt"}
+2. If image is too blurry: {"error": "blurry", "message": "Image is too blurry. Please retake with better lighting"}
+3. For valid bills: Return a JSON array of expense items (structure below)
 
-SUPPORTED FORMATS:
-- Thermal receipts (grocery stores, restaurants)
-- Printed invoices
-- Handwritten bills (best effort)
+SUPPORTED INPUTS:
+- Thermal receipts, printed invoices, handwritten bills
 - Multi-language bills (Hindi, English, Marathi, Tamil, etc.)
-- UPI transaction screenshots
+- UPI/payment screenshots
 
-OUTPUT FORMAT (JSON only, NO markdown, NO code blocks):
-[{
-  "date": "YYYY-MM-DD",
-  "item": "Short description (max 50 chars)",
-  "category": "Food|Travel|Shopping|Health|Entertainment|Bills|Essentials|Other",
-  "subcategory": "Specific sub-type if identifiable",
-  "amount": 123.45,
-  "vendor": "Store/Restaurant name",
-  "confidence": 0.95
-}]
+REQUIRED OUTPUT FORMAT (STRICT JSON, NO MARKDOWN):
+[{"date":"YYYY-MM-DD","item":"Description","category":"Food|Transportation|Shopping|Health|Entertainment|Bills|Essentials|Other","amount":123.45,"vendor":"Store name","confidence":0.95}]
 
-EXTRACTION GUIDELINES:
-- For grocery bills: Create SEPARATE entries for significantly different item categories
-- For restaurant bills: Usually one entry with total amount
-- For multiple items in same category: Combine them with total
-- Missing date: Use today's date
-- Unclear category: Use "Other"
-- Round amounts to 2 decimal places
-- Confidence: 0.0-1.0 based on image quality and extraction certainty
+GUIDELINES:
+- Restaurant: One entry with total
+- Grocery: Combine items, use total amount
+- Missing date: Use today (${new Date().toISOString().split('T')[0]})
+- Unknown category: "Other"
+- amount MUST be a number, not string
 
-RESPOND WITH ONLY THE JSON. NO EXPLANATIONS.`;
+RESPOND WITH ONLY THE JSON. NOTHING ELSE.`;
+
 
 const BillScanner = ({ onClose, onExpensesAdded }) => {
     const fileInputRef = useRef(null);

@@ -384,15 +384,21 @@
     padding: 1.5rem;
 }
 
-/* Stats Grid */
+/* Stats Grid - 4 cards like reference */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
     .stats-grid {
         grid-template-columns: 1fr;
     }
@@ -402,8 +408,60 @@
     background: white;
     border-radius: 12px;
     padding: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    border: 1px solid #F1F5F9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-left: 4px solid #94A3B8;
+    text-align: center;
+}
+
+.stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card .stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748B;
+}
+
+/* Opening Balance - Blue */
+.stat-card.opening {
+    border-left-color: #3B82F6;
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+}
+
+.stat-card.opening .stat-value {
+    color: #1D4ED8;
+}
+
+/* Closing Balance - Green */
+.stat-card.closing {
+    border-left-color: #10B981;
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+}
+
+.stat-card.closing .stat-value {
+    color: #059669;
+}
+
+/* Expenses - Orange/Red */
+.stat-card.expense {
+    border-left-color: #F97316;
+    background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+}
+
+.stat-card.expense .stat-value {
+    color: #EA580C;
+}
+
+/* Savings - Purple */
+.stat-card.savings {
+    border-left-color: #8B5CF6;
+    background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
 }
 
 .stat-header {

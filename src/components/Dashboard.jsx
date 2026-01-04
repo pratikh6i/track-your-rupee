@@ -72,8 +72,22 @@ const Dashboard = () => {
             .filter(item => item.category !== 'Income')
             .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
-        return { income, expense, balance: income - expense };
-    }, [sheetData]);
+        // Use profile data for better insights
+        const totalIncome = (monthlySalary || 0) + (otherGains || 0);
+        const openingBalance = currentBalance || 0;
+        const savings = totalIncome - expense;
+        const closingBalance = openingBalance + savings;
+
+        return {
+            income: totalIncome > 0 ? totalIncome : income,
+            expense,
+            balance: closingBalance > 0 ? closingBalance : income - expense,
+            openingBalance,
+            closingBalance,
+            savings,
+            transactionIncome: income
+        };
+    }, [sheetData, monthlySalary, otherGains, currentBalance]);
 
     // Calculate current month's expenses for budget
     const currentMonthExpense = useMemo(() => {
@@ -243,28 +257,25 @@ const Dashboard = () => {
             </header>
 
             <main className="dashboard-main">
-                {/* Stats Grid */}
+                {/* Stats Grid - 4 Cards like reference */}
                 <div className="stats-grid">
-                    <div className="stat-card balance">
-                        <div className="stat-header">
-                            <span className="stat-label">Balance</span>
-                            <TrendingUp size={18} className="stat-icon" />
-                        </div>
-                        <div className="stat-value">{formatCurrency(stats.balance)}</div>
+                    <div className="stat-card opening">
+                        <div className="stat-value">{formatCurrency(stats.openingBalance)}</div>
+                        <div className="stat-label">Opening Balance</div>
                     </div>
-                    <div className="stat-card income">
-                        <div className="stat-header">
-                            <span className="stat-label">Income</span>
-                            <TrendingUp size={18} className="stat-icon green" />
-                        </div>
-                        <div className="stat-value green">{formatCurrency(stats.income)}</div>
+                    <div className="stat-card closing">
+                        <div className="stat-value">{formatCurrency(stats.closingBalance)}</div>
+                        <div className="stat-label">Closing Balance</div>
                     </div>
                     <div className="stat-card expense">
-                        <div className="stat-header">
-                            <span className="stat-label">Expenses</span>
-                            <TrendingDown size={18} className="stat-icon red" />
+                        <div className="stat-value">{formatCurrency(stats.expense)}</div>
+                        <div className="stat-label">Total Expenses</div>
+                    </div>
+                    <div className="stat-card savings">
+                        <div className="stat-value" style={{ color: stats.savings >= 0 ? '#10B981' : '#EF4444' }}>
+                            {formatCurrency(Math.abs(stats.savings))}
                         </div>
-                        <div className="stat-value red">{formatCurrency(stats.expense)}</div>
+                        <div className="stat-label">{stats.savings >= 0 ? 'Savings' : 'Overspent'}</div>
                     </div>
                 </div>
 
