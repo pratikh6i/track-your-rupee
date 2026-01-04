@@ -8,20 +8,19 @@ import {
     BarChart, Bar
 } from 'recharts';
 import {
-    Plus, RefreshCw, TrendingUp, TrendingDown, LayoutDashboard,
-    Link as LinkIcon, FileSpreadsheet, XCircle, Target
+    Plus, RefreshCw, TrendingUp, TrendingDown, FileSpreadsheet,
+    Link as LinkIcon, XCircle, Target, LogOut
 } from 'lucide-react';
 import AddExpenseModal from './AddExpenseModal';
 import AIQuickAdd from './AIQuickAdd';
 import HelpModal from './HelpModal';
 import SheetPickerModal from './SheetPickerModal';
-import ProfileMenu from './ProfileMenu';
 import SettingsModal from './SettingsModal';
 import { getCategoryColor, getCategoryIcon } from '../data/categories';
 
 const Dashboard = () => {
-    const { sheetData, needsSheet, budget } = useStore();
-    const { refreshData, createSheet, validateAndSetSheet, isLoading } = useGoogleAuth();
+    const { sheetData, needsSheet, budget, user } = useStore();
+    const { logout, refreshData, createSheet, validateAndSetSheet, isLoading } = useGoogleAuth();
 
     // UI State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -127,142 +126,132 @@ const Dashboard = () => {
     // --- Render: No Sheet Prompt ---
     if (needsSheet) {
         return (
-            <div className="dashboard-container">
-                <header className="dashboard-header glass-header">
-                    <div className="logo-section">
+            <div className="dashboard">
+                <header className="header">
+                    <div className="header-left">
                         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-icon" />
-                        <h1>Track your Rupee</h1>
+                        <span className="logo-text">Track your Rupee</span>
                     </div>
-                    <ProfileMenu onOpenSettings={() => setIsSettingsOpen(true)} onOpenHelp={() => setIsHelpOpen(true)} />
+                    <div className="header-right">
+                        {user?.picture && (
+                            <img src={user.picture} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+                        )}
+                        <button className="btn-icon logout" onClick={logout} title="Sign out">
+                            <LogOut size={18} />
+                        </button>
+                    </div>
                 </header>
 
-                <div className="no-sheet-prompt">
-                    <div className="prompt-card glass-card">
-                        <div className="prompt-icon">
-                            <LayoutDashboard size={48} />
+                <main className="no-sheet-container">
+                    <div className="empty-state">
+                        <div className="empty-icon">
+                            <FileSpreadsheet size={48} />
                         </div>
-                        <h2>Let's Get Started</h2>
-                        <p>We couldn't automatically find your expense sheet. Choose an option below:</p>
+                        <h2>No Expense Sheet Found</h2>
+                        <p>Create a new Google Sheet to start tracking your expenses.</p>
 
-                        <div className="sheet-options">
-                            <div className="option-block">
-                                <button className="btn-primary create-btn" onClick={createSheet} disabled={isLoading}>
-                                    {isLoading ? 'Creating...' : 'Create New Sheet'}
-                                </button>
-                                <span className="option-desc">Start fresh with a new template</span>
-                            </div>
+                        <button className="btn-create" onClick={createSheet} disabled={isLoading}>
+                            {isLoading ? 'Creating...' : 'Create New Sheet'}
+                        </button>
 
-                            <div className="divider"><span>OR</span></div>
+                        <div className="or-divider">
+                            <span>or</span>
+                        </div>
 
-                            <div className="option-block">
-                                <button
-                                    className="btn-secondary browse-btn"
-                                    onClick={() => setIsSheetPickerOpen(true)}
-                                    disabled={isLoading}
-                                >
-                                    <FileSpreadsheet size={18} />
-                                    Browse Existing Sheets
-                                </button>
-                            </div>
+                        <div className="alt-options">
+                            <button className="btn-outline" onClick={() => setIsSheetPickerOpen(true)} disabled={isLoading}>
+                                <FileSpreadsheet size={16} />
+                                Browse Existing Sheets
+                            </button>
 
                             <form onSubmit={handleLinkSubmit} className="link-form">
-                                <div className="input-group">
-                                    <LinkIcon size={16} className="input-icon" />
+                                <div className="link-input-group">
+                                    <LinkIcon size={16} className="link-icon" />
                                     <input
                                         type="text"
-                                        placeholder="Paste Google Sheet Link..."
+                                        placeholder="Paste Sheet Link..."
                                         value={sheetLinkInput}
                                         onChange={(e) => setSheetLinkInput(e.target.value)}
-                                        className="link-input"
                                         disabled={isValidatingLink}
                                     />
                                 </div>
-                                <button
-                                    type="submit"
-                                    className="btn-link-submit"
-                                    disabled={!sheetLinkInput || isValidatingLink}
-                                >
-                                    {isValidatingLink ? 'Checking...' : 'Link'}
+                                <button type="submit" className="btn-link" disabled={!sheetLinkInput || isValidatingLink}>
+                                    {isValidatingLink ? '...' : 'Link'}
                                 </button>
                             </form>
-                            {linkError && <p className="error-text">{linkError}</p>}
+                            {linkError && <p className="error-msg">{linkError}</p>}
                         </div>
                     </div>
-                </div>
+                </main>
 
-                {isSheetPickerOpen && (
-                    <SheetPickerModal onClose={() => setIsSheetPickerOpen(false)} />
-                )}
-                {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
-                {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
+                {isSheetPickerOpen && <SheetPickerModal onClose={() => setIsSheetPickerOpen(false)} />}
             </div>
         );
     }
 
     // --- Render: Main Dashboard ---
     return (
-        <div className="dashboard-container">
-            <header className="dashboard-header glass-header">
-                <div className="logo-section">
+        <div className="dashboard">
+            <header className="header">
+                <div className="header-left">
                     <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="logo-icon" />
-                    <h1>Dashboard</h1>
+                    <span className="logo-text">Dashboard</span>
                 </div>
-                <div className="header-actions">
+                <div className="header-right">
                     <button className="btn-icon" onClick={refreshData} title="Refresh Data">
-                        <RefreshCw size={20} />
+                        <RefreshCw size={18} />
                     </button>
-                    <ProfileMenu onOpenSettings={() => setIsSettingsOpen(true)} onOpenHelp={() => setIsHelpOpen(true)} />
+                    <button className="btn-icon" onClick={() => setIsSettingsOpen(true)} title="Settings">
+                        ⚙️
+                    </button>
+                    {user?.picture && (
+                        <img src={user.picture} alt="" className="user-avatar" referrerPolicy="no-referrer" />
+                    )}
+                    <button className="btn-icon logout" onClick={logout} title="Sign out">
+                        <LogOut size={18} />
+                    </button>
                 </div>
             </header>
 
-            <main className="dashboard-content">
+            <main className="dashboard-main">
                 {/* Stats Grid */}
                 <div className="stats-grid">
-                    <div className="stat-card glass-card balance">
+                    <div className="stat-card balance">
                         <div className="stat-header">
-                            <span className="stat-label">Total Balance</span>
-                            <div className="trend up">
-                                <TrendingUp size={16} />
-                            </div>
+                            <span className="stat-label">Balance</span>
+                            <TrendingUp size={18} className="stat-icon" />
                         </div>
                         <div className="stat-value">{formatCurrency(stats.balance)}</div>
                     </div>
-                    <div className="stat-card glass-card income">
+                    <div className="stat-card income">
                         <div className="stat-header">
                             <span className="stat-label">Income</span>
-                            <div className="icon-bg">
-                                <TrendingUp size={20} />
-                            </div>
+                            <TrendingUp size={18} className="stat-icon green" />
                         </div>
-                        <div className="stat-value">{formatCurrency(stats.income)}</div>
+                        <div className="stat-value green">{formatCurrency(stats.income)}</div>
                     </div>
-                    <div className="stat-card glass-card expense">
+                    <div className="stat-card expense">
                         <div className="stat-header">
                             <span className="stat-label">Expenses</span>
-                            <div className="icon-bg">
-                                <TrendingDown size={20} />
-                            </div>
+                            <TrendingDown size={18} className="stat-icon red" />
                         </div>
-                        <div className="stat-value">{formatCurrency(stats.expense)}</div>
+                        <div className="stat-value red">{formatCurrency(stats.expense)}</div>
                     </div>
                 </div>
 
                 {/* Budget Progress */}
-                <div className="budget-card glass-card">
+                <div className="budget-card">
                     <div className="budget-header">
                         <div className="budget-title">
                             <Target size={18} />
                             <span>Monthly Budget</span>
                         </div>
-                        <span className={`budget-status ${budgetStatus}`}>
+                        <span className={`budget-amount ${budgetStatus}`}>
                             {formatCurrency(currentMonthExpense)} / {formatCurrency(budget)}
                         </span>
                     </div>
                     <div className="budget-bar">
-                        <div
-                            className={`budget-fill ${budgetStatus}`}
-                            style={{ width: `${budgetPercentage}%` }}
-                        ></div>
+                        <div className={`budget-fill ${budgetStatus}`} style={{ width: `${budgetPercentage}%` }}></div>
                     </div>
                     <div className="budget-footer">
                         <span>{budgetPercentage}% used</span>
@@ -270,121 +259,85 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Charts Section */}
+                {/* Charts */}
                 <div className="charts-grid">
-                    {/* Donut Chart - Categories */}
-                    <div className="chart-card glass-card">
-                        <div className="chart-header">
-                            <h3>
-                                <PieChart size={18} className="text-primary" style={{ display: 'inline', marginRight: 8 }} />
-                                Spending by Category
-                            </h3>
-                            {selectedCategory && (
-                                <button className="clear-filter-btn" onClick={() => setSelectedCategory(null)}>
-                                    Clear Filter <XCircle size={14} />
-                                </button>
-                            )}
-                        </div>
+                    <div className="chart-card">
+                        <h3>Spending by Category</h3>
+                        {selectedCategory && (
+                            <button className="clear-filter" onClick={() => setSelectedCategory(null)}>
+                                Clear <XCircle size={14} />
+                            </button>
+                        )}
                         <div className="chart-container">
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={280}>
                                 <PieChart>
                                     <Pie
                                         data={categoryData}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
+                                        outerRadius={90}
+                                        paddingAngle={3}
                                         dataKey="value"
-                                        onClick={(data) => {
-                                            setSelectedCategory(selectedCategory === data.name ? null : data.name);
-                                        }}
+                                        onClick={(d) => setSelectedCategory(selectedCategory === d.name ? null : d.name)}
                                         cursor="pointer"
                                     >
-                                        {categoryData.map((entry, index) => (
+                                        {categoryData.map((entry, i) => (
                                             <Cell
-                                                key={`cell-${index}`}
+                                                key={i}
                                                 fill={getCategoryColor(entry.name)}
-                                                stroke="none"
                                                 opacity={selectedCategory && selectedCategory !== entry.name ? 0.3 : 1}
                                             />
                                         ))}
                                     </Pie>
-                                    <Tooltip
-                                        formatter={(value) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    />
-                                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="chart-total">
-                                        {formatCurrency(stats.expense)}
-                                        <tspan x="50%" dy="20" fontSize="12" fill="#9CA3AF">TOTAL</tspan>
-                                    </text>
+                                    <Tooltip formatter={(v) => formatCurrency(v)} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="chart-legend">
-                            {categoryData.slice(0, 4).map((cat, i) => (
-                                <div
-                                    key={i}
-                                    className={`legend-item ${selectedCategory === cat.name ? 'active' : ''} ${selectedCategory && selectedCategory !== cat.name ? 'dimmed' : ''}`}
-                                    onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
-                                >
-                                    <span className="dot" style={{ backgroundColor: getCategoryColor(cat.name) }}></span>
+                        <div className="legend">
+                            {categoryData.slice(0, 5).map((cat, i) => (
+                                <div key={i} className="legend-item" onClick={() => setSelectedCategory(cat.name)}>
+                                    <span className="dot" style={{ background: getCategoryColor(cat.name) }}></span>
                                     <span className="name">{cat.name}</span>
-                                    <span className="amount">{formatCurrency(cat.value)}</span>
-                                    <span className="percent">{Math.round((cat.value / stats.expense) * 100)}%</span>
+                                    <span className="amt">{formatCurrency(cat.value)}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Area Chart - Daily Trend */}
-                    <div className="chart-card glass-card">
-                        <div className="chart-header">
-                            <h3>
-                                <TrendingUp size={18} className="text-primary" style={{ display: 'inline', marginRight: 8 }} />
-                                Daily Trend
-                            </h3>
-                        </div>
+                    <div className="chart-card">
+                        <h3>Daily Trend</h3>
                         <div className="chart-container">
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={280}>
                                 <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
-                                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="colorAmt" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
                                             <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#E2E8F0" />
-                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} />
-                                    <Tooltip
-                                        formatter={(value) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '12px', border: 'none' }}
-                                    />
-                                    <Area type="monotone" dataKey="amount" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                                    <Tooltip formatter={(v) => formatCurrency(v)} />
+                                    <Area type="monotone" dataKey="amount" stroke="#3B82F6" strokeWidth={2} fill="url(#colorAmt)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Bar Chart - Top Categories */}
-                    <div className="chart-card glass-card full-width">
-                        <div className="chart-header">
-                            <h3>
-                                <BarChart size={18} className="text-primary" style={{ display: 'inline', marginRight: 8 }} />
-                                Top Categories
-                            </h3>
-                        </div>
+                    <div className="chart-card wide">
+                        <h3>Top Categories</h3>
                         <div className="chart-container">
-                            <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={categoryData.slice(0, 5)} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <BarChart data={categoryData.slice(0, 5)} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
                                     <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#E2E8F0" />
                                     <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{ fill: '#F1F5F9' }} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+                                    <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                                    <Tooltip formatter={(v) => formatCurrency(v)} />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                                        {categoryData.slice(0, 5).map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} />
+                                        {categoryData.slice(0, 5).map((e, i) => (
+                                            <Cell key={i} fill={getCategoryColor(e.name)} />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -393,41 +346,28 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Transactions List */}
-                <div className="transactions-section glass-card">
-                    <div className="section-header">
-                        <h2>Recent Transactions</h2>
-                        {selectedCategory && (
-                            <span className="filter-badge">
-                                Filtered by: <strong>{selectedCategory}</strong>
-                            </span>
-                        )}
-                        <button className="btn-link">View All</button>
+                {/* Transactions */}
+                <div className="transactions-card">
+                    <div className="transactions-header">
+                        <h3>Recent Transactions</h3>
+                        {selectedCategory && <span className="filter-badge">{selectedCategory}</span>}
                     </div>
                     <div className="transactions-list">
                         {filteredTransactions.length === 0 ? (
-                            <div className="empty-state">
-                                <p>No transactions found for this selection.</p>
-                            </div>
+                            <div className="no-transactions">No transactions found</div>
                         ) : (
-                            filteredTransactions.slice().reverse().slice(0, 10).map((item, index) => (
-                                <div key={index} className="transaction-item">
-                                    <div className="t-icon" style={{ backgroundColor: `${getCategoryColor(item.category)}20`, color: getCategoryColor(item.category) }}>
+                            filteredTransactions.slice().reverse().slice(0, 10).map((item, i) => (
+                                <div key={i} className="transaction-row">
+                                    <div className="t-icon" style={{ background: `${getCategoryColor(item.category)}20`, color: getCategoryColor(item.category) }}>
                                         {getCategoryIcon(item.category)}
                                     </div>
-                                    <div className="t-details">
-                                        <div className="t-main">
-                                            <span className="t-item">{item.item}</span>
-                                            <span className="t-cat">{item.category}</span>
-                                        </div>
-                                        <div className="t-sub">
-                                            <span className="t-date">{item.date}</span>
-                                            {item.notes && <span className="t-notes">• {item.notes}</span>}
-                                        </div>
+                                    <div className="t-info">
+                                        <span className="t-name">{item.item}</span>
+                                        <span className="t-meta">{item.category} • {item.date}</span>
                                     </div>
-                                    <div className={`t-amount ${item.category === 'Income' ? 'positive' : ''}`}>
-                                        {item.category === 'Income' ? '+' : '-'} {formatCurrency(item.amount)}
-                                    </div>
+                                    <span className={`t-amount ${item.category === 'Income' ? 'income' : ''}`}>
+                                        {item.category === 'Income' ? '+' : '-'}{formatCurrency(item.amount)}
+                                    </span>
                                 </div>
                             ))
                         )}
@@ -435,17 +375,15 @@ const Dashboard = () => {
                 </div>
             </main>
 
-            {/* Floating Action Button */}
+            {/* FABs */}
             <button className="fab" onClick={() => setIsAddModalOpen(true)}>
                 <Plus size={24} />
             </button>
-
-            {/* AI Quick Add Button */}
-            <button className="ai-fab" onClick={() => setIsAIOpen(true)}>
-                <span className="sparkles">✨</span>
-                <span className="hide-mobile">Quick Add</span>
+            <button className="fab-ai" onClick={() => setIsAIOpen(true)}>
+                ✨ <span className="fab-text">Quick Add</span>
             </button>
 
+            {/* Modals */}
             {isAddModalOpen && <AddExpenseModal onClose={() => setIsAddModalOpen(false)} />}
             {isAIOpen && <AIQuickAdd onClose={() => setIsAIOpen(false)} />}
             {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
