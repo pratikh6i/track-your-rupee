@@ -282,6 +282,47 @@ const GoogleAuthProviderInner = ({ children }) => {
             if (!response.ok) throw new Error('API request failed');
 
             useStore.getState().addExpense({ ...expense, id: sheetData.length });
+
+            // --- BUDGET ALERT LOGIC ---
+            const state = useStore.getState();
+            const { budget, webhookUrl, lastAlertLevel } = state;
+
+            // Calculate new total expense including this one
+            const currentTotal = sheetData
+                .filter(item => item.category !== 'Income')
+                .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) + parseFloat(expense.amount);
+
+            if (budget > 0 && webhookUrl) {
+                const percentage = (currentTotal / budget) * 100;
+                let alertLevel = 0;
+
+                if (percentage >= 100) alertLevel = 100;
+                else if (percentage >= 90) alertLevel = 90;
+                else if (percentage >= 75) alertLevel = 75;
+                else if (percentage >= 50) alertLevel = 50;
+                else if (percentage >= 25) alertLevel = 25;
+
+                // Only alert if we crossed a NEW threshold upwards
+                if (alertLevel > lastAlertLevel) {
+                    console.log(`Triggering budget alert: ${alertLevel}%`);
+
+                    const message = alertLevel === 100
+                        ? `🚨 **CRITICAL ALERT**: You have utilized **100%** of your budget (₹${budget})!`
+                        : `⚠️ **Spending Alert**: You have used **${alertLevel}%** of your monthly budget.`;
+
+                    // Send Webhook (Fire & Forget)
+                    fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: message })
+                    }).catch(err => console.error('Webhook failed', err));
+
+                    // Update local state to prevent spam
+                    state.setLastAlertLevel(alertLevel);
+                }
+            }
+            // --------------------------
+
             return true;
         } catch (error) {
             console.error('Error adding expense:', error);
@@ -463,8 +504,35 @@ const GoogleAuthProviderInner = ({ children }) => {
                         // If persisted sheet invalid, search Drive
                         const existingSheets = await findExistingSheets(token, userInfo.email);
                         if (existingSheets.length > 0) {
-                            setSheetId(existingSheets[0].id);
-                            await loadSheetData(token, existingSheets[0].id);
+                            const latestSheetId = existingSheets[0].id;
+                            setSheetId(latestSheetId);
+                            setLoading(true);
+                            await loadSheetData(token, latestSheetId);
+
+                            // Load Settings (Budget & Webhook)
+                            try {
+                                const settingsRes = await fetch(
+                                    `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B3`,
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                                if (settingsRes.ok) {
+                                    const settingsData = await settingsRes.json();
+                                    const rows = settingsData.values || [];
+                                    if (rows.length > 0) {
+                                        // Row 1 (Index 0 in response if A2 start): Budget
+                                        if (rows[0] && rows[0][1]) {
+                                            useStore.getState().setBudget(parseInt(rows[0][1]) || 11000);
+                                        }
+                                        // Row 2 (Index 1): Webhook
+                                        if (rows[1] && rows[1][1]) {
+                                            useStore.getState().setWebhookUrl(rows[1][1]);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.log('Settings sheet may not exist yet');
+                            }
+
                             setCurrentView('dashboard');
                         } else {
                             setSheetData([]);
@@ -475,8 +543,25 @@ const GoogleAuthProviderInner = ({ children }) => {
                     // No stored sheet ID, search Drive
                     const existingSheets = await findExistingSheets(token, userInfo.email);
                     if (existingSheets.length > 0) {
-                        setSheetId(existingSheets[0].id);
-                        await loadSheetData(token, existingSheets[0].id);
+                        const latestSheetId = existingSheets[0].id;
+                        setSheetId(latestSheetId);
+                        setLoading(true);
+                        await loadSheetData(token, latestSheetId);
+
+                        // Load Settings
+                        try {
+                            const settingsRes = await fetch(
+                                `https://sheets.googleapis.com/v4/spreadsheets/${latestSheetId}/values/Settings!A2:B3`,
+                                { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            if (settingsRes.ok) {
+                                const settingsData = await settingsRes.json();
+                                const rows = settingsData.values || [];
+                                if (rows[0] && rows[0][1]) useStore.getState().setBudget(parseInt(rows[0][1]) || 11000);
+                                if (rows[1] && rows[1][1]) useStore.getState().setWebhookUrl(rows[1][1]);
+                            }
+                        } catch (e) { console.log('Settings load failed'); }
+
                         setCurrentView('dashboard');
                     } else {
                         setNeedsSheet(true);

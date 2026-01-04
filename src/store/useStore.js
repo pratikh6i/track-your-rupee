@@ -36,6 +36,8 @@ const useStore = create(
 
       // Settings
       budget: 11000, // Default monthly budget
+      webhookUrl: '', // Google Chat Webhook URL
+      lastAlertLevel: 0, // Last alert level sent (0, 25, 50, 75, 90, 100)
 
       // Actions - Auth
       setUser: (user) => set({
@@ -91,6 +93,8 @@ const useStore = create(
       toggleAddModal: () => set((state) => ({ isAddModalOpen: !state.isAddModalOpen })),
       setEditingTransaction: (transaction) => set({ editingTransaction: transaction }),
       setBudget: (budget) => set({ budget }),
+      setWebhookUrl: (url) => set({ webhookUrl: url }),
+      setLastAlertLevel: (level) => set({ lastAlertLevel: level }),
 
       // Computed values (getters)
       getStats: () => {
@@ -197,6 +201,8 @@ const useStore = create(
       partialize: (state) => ({
         sheetId: state.sheetId,
         budget: state.budget,
+        webhookUrl: state.webhookUrl,
+        lastAlertLevel: state.lastAlertLevel,
         user: state.user ? { email: state.user.email, name: state.user.name, picture: state.user.picture } : null
       })
     }
