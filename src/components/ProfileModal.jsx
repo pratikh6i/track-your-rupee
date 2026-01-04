@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Save, Loader2, User, DollarSign, TrendingUp, Wallet, Target, Bell, Zap, Eye, EyeOff } from 'lucide-react';
 import { useGoogleAuth } from './GoogleAuthProvider';
 import useStore from '../store/useStore';
+import SanitizeModal from './SanitizeModal';
 import './ProfileModal.css';
 
 const ProfileModal = ({ onClose }) => {
@@ -32,6 +33,7 @@ const ProfileModal = ({ onClose }) => {
     const [saveStatus, setSaveStatus] = useState(null);
     const [isTestingWebhook, setIsTestingWebhook] = useState(false);
     const [testStatus, setTestStatus] = useState(null);
+    const [isSanitizeOpen, setIsSanitizeOpen] = useState(false);
 
     useEffect(() => {
         setLocalSalary(monthlySalary || 0);
@@ -313,8 +315,18 @@ const ProfileModal = ({ onClose }) => {
                             <><Save size={18} /> Save All</>
                         )}
                     </button>
+
+                    {/* Danger Zone */}
+                    <div className="danger-zone">
+                        <h3>Danger Zone</h3>
+                        <button className="btn-sanitize" onClick={() => setIsSanitizeOpen(true)}>
+                            Sanitize (Delete Everything)
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {isSanitizeOpen && <SanitizeModal onClose={() => setIsSanitizeOpen(false)} />}
         </div>
     );
 };

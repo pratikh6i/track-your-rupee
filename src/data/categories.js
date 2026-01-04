@@ -2,21 +2,21 @@
 // Using vibrant, maximally-distinct colors for better visualization
 
 // Full-spectrum color palette - 20 highly distinct colors
-// Optimized for human eye distinction using Golden Angle (137.5°) distribution
+// Rearranged to ensure common categories get very different colors
 const DISTINCT_COLORS = [
-    '#3B82F6', // Blue
-    '#10B981', // Emerald
-    '#F97316', // Orange
-    '#8B5CF6', // Violet
-    '#EC4899', // Pink
-    '#14B8A6', // Teal
-    '#F59E0B', // Amber
+    '#3B82F6', // Blue (Bills)
+    '#10B981', // Emerald (Income)
+    '#F97316', // Orange (Food)
+    '#8B5CF6', // Violet (Teleco)
+    '#EC4899', // Pink (Family)
+    '#14B8A6', // Teal (Utilities)
+    '#EAB308', // Yellow (Gifts)
     '#6366F1', // Indigo
-    '#EF4444', // Red
-    '#22C55E', // Green
+    '#EF4444', // Red (Health)
+    '#22C55E', // Green (Travel)
     '#A855F7', // Purple
-    '#06B6D4', // Cyan
-    '#F43F5E', // Rose
+    '#06B6D4', // Cyan (Transport)
+    '#F43F5E', // Rose (Shopping)
     '#84CC16', // Lime
     '#0EA5E9', // Sky
     '#D946EF', // Fuchsia
@@ -27,70 +27,32 @@ const DISTINCT_COLORS = [
 ];
 
 export const CATEGORIES = {
-    Food: {
-        color: '#F97316', // Orange
-        icon: '🍽️',
-        subcategories: [
-            'Lunch', 'Dinner', 'Breakfast', 'Fruits', 'Milk',
-            'Dates', 'Cashew', 'Almond', 'Snacks', 'Beverages',
-            'Coffee', 'Tea', 'Groceries', 'Vegetables', 'Rice/Wheat', 'Other Food'
-        ]
-    },
-    'Transportation': {
-        color: '#06B6D4', // Cyan
-        icon: '🚗',
-        subcategories: ['Petrol', 'Auto', 'Cab', 'Bus', 'Train', 'Metro', 'Parking', 'Toll']
-    },
-    'Essentials': {
-        color: '#3B82F6', // Blue
-        icon: '🧴',
-        subcategories: ['Toiletries', 'Medicine', 'Haircut', 'Laundry', 'Personal Care', 'Stationery', 'Household', 'Other']
-    },
-    'Telecommunications': {
-        color: '#8B5CF6', // Violet
-        icon: '📱',
-        subcategories: ['Mobile Recharge', 'Internet', 'DTH', 'Subscriptions']
-    },
-    'Family': {
-        color: '#EC4899', // Pink
-        icon: '👨‍👩‍👧',
-        subcategories: ['Parents', 'Siblings', 'Kids', 'Relatives', 'Other']
-    },
-    'Gifts & Donations': {
-        color: '#F59E0B', // Amber
-        icon: '🎁',
-        subcategories: ['Birthday', 'Wedding', 'Charity', 'Religious', 'Other']
-    },
-    'Travel': {
-        color: '#22C55E', // Green
-        icon: '✈️',
-        subcategories: ['Travel', 'Hotel', 'Entry Tickets', 'Activities', 'Food on Trip']
-    },
-    'Health': {
-        color: '#EF4444', // Red
-        icon: '🏥',
-        subcategories: ['Doctor', 'Medicine', 'Tests', 'Insurance', 'Healthcare', 'Other']
-    },
-    'Entertainment': {
-        color: '#A855F7', // Purple
-        icon: '🎬',
-        subcategories: ['Movies', 'OTT', 'Games', 'Events', 'Other']
-    },
-    'Shopping': {
-        color: '#F43F5E', // Rose
-        icon: '🛍️',
-        subcategories: ['Clothes', 'Electronics', 'Home', 'Books', 'Other']
-    },
-    'Bills & Utilities': {
-        color: '#14B8A6', // Teal
-        icon: '💡',
-        subcategories: ['Electricity', 'Water', 'Gas', 'Rent', 'Maintenance']
-    },
-    'Income': {
-        color: '#10B981', // Emerald
-        icon: '💰',
-        subcategories: ['Salary', 'Freelance', 'Investment', 'Refund', 'Other']
-    }
+    // Top Categories - Forced Distinct Colors
+    'Bills': { color: '#3B82F6', icon: '🧾', subcategories: [] }, // Explicit short name
+    'Bills & Utilities': { color: '#3B82F6', icon: '💡', subcategories: ['Electricity', 'Water', 'Gas', 'Rent', 'Maintenance'] },
+
+    Food: { color: '#F97316', icon: '🍽️', subcategories: ['Lunch', 'Dinner', 'Breakfast', 'Groceries', 'Vegetables'] },
+
+    Health: { color: '#EF4444', icon: '🏥', subcategories: ['Doctor', 'Medicine', 'Tests'] },
+
+    Shopping: { color: '#8B5CF6', icon: '🛍️', subcategories: ['Clothes', 'Electronics', 'Home'] }, // Changed to Violet to separate from Red
+
+    Transportation: { color: '#06B6D4', icon: '🚗', subcategories: ['Fuel', 'Cab', 'Bus', 'Train'] },
+
+    Essentials: { color: '#14B8A6', icon: '🧴', subcategories: ['Toiletries', 'Personal Care'] }, // Changed to Teal
+
+    Entertainment: { color: '#F59E0B', icon: '🎬', subcategories: ['Movies', 'Games', 'Events'] }, // Changed to Amber
+
+    Travel: { color: '#22C55E', icon: '✈️', subcategories: ['Hotel', 'Flights', 'Food on Trip'] },
+
+    Telecommunications: { color: '#6366F1', icon: '📱', subcategories: ['Mobile', 'Internet'] },
+
+    Family: { color: '#EC4899', icon: '👨‍👩‍👧', subcategories: ['Kids', 'Parents'] },
+
+    'Gifts': { color: '#D946EF', icon: '🎁', subcategories: [] }, // Explicit short name
+    'Gifts & Donations': { color: '#D946EF', icon: '🎁', subcategories: ['Gift', 'Charity'] },
+
+    Income: { color: '#10B981', icon: '💰', subcategories: ['Salary', 'Freelance'] }
 };
 
 // Track dynamically assigned colors for unknown categories

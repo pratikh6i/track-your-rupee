@@ -160,8 +160,8 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
         setParsedExpenses(null);
 
         try {
-            const model = getGeminiModel(geminiRequestCount);
-            console.log(`Using Gemini model: ${model} (request #${geminiRequestCount + 1})`);
+            const model = "gemini-1.5-flash"; // Use flash for speed
+            console.log(`Using Gemini model: ${model}`);
 
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
@@ -173,17 +173,13 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
                             parts: [
                                 { text: BILL_EXTRACTION_PROMPT },
                                 {
-                                    inlineData: {
-                                        mimeType: 'image/jpeg',
-                                        data: imageData
+                                    inline_data: {
+                                        mime_type: 'image/jpeg',
+                                        data: base64Image
                                     }
                                 }
                             ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 1024
-                        }
+                        }]
                     })
                 }
             );
