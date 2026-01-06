@@ -160,7 +160,7 @@ const BillScanner = ({ onClose, onExpensesAdded }) => {
         setParsedExpenses(null);
 
         try {
-            const model = "gemini-1.5-flash"; // Use flash for speed
+            const model = "gemini-2.5-flash-lite"; // Use flash for speed
             console.log(`Using Gemini model: ${model}`);
 
             const response = await fetch(
