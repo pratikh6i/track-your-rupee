@@ -892,3 +892,31 @@
 .fab-scan:active {
     transform: scale(0.95);
 }
+/* Voice FAB */
+.fab-voice {
+    position: fixed;
+    bottom: 2rem;
+    left: 6rem;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    transition: all 0.2s;
+    z-index: 50;
+}
+
+.fab-voice:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.fab-voice:active {
+    transform: scale(0.95);
+}
