@@ -237,7 +237,7 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
             console.log('Transcript:', transcript);
 
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+                `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
