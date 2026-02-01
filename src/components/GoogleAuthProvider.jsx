@@ -463,6 +463,27 @@ const GoogleAuthProviderInner = ({ children }) => {
                 if (!userInfoResponse.ok) throw new Error('Failed to get user info');
                 const userInfo = await userInfoResponse.json();
 
+                // SECURITY FIX: Clear all persisted data from previous users
+                // This prevents data leakage when switching accounts
+                const storagePrefix = 'track-your-rupee-v2';
+                const allKeys = Object.keys(sessionStorage);
+                allKeys.forEach(key => {
+                    if (key.startsWith(storagePrefix) && !key.includes(userInfo.email)) {
+                        sessionStorage.removeItem(key);
+                        console.log('🧹 Cleared stale storage for different user:', key);
+                    }
+                });
+
+                // Also clear any old localStorage (migration cleanup)
+                try {
+                    if (localStorage.getItem(storagePrefix)) {
+                        localStorage.removeItem(storagePrefix);
+                        console.log('🧹 Cleared old localStorage');
+                    }
+                } catch (e) {
+                    // Ignore localStorage errors
+                }
+
                 setUser({
                     email: userInfo.email,
                     name: userInfo.name,
@@ -646,7 +667,25 @@ const GoogleAuthProviderInner = ({ children }) => {
         googleLogout();
         setAccessToken(null);
         clearSession();
+
+        // SECURITY FIX: Clear ALL storage on logout
+        const storagePrefix = 'track-your-rupee-v2';
+        const sessionKeys = Object.keys(sessionStorage);
+        sessionKeys.forEach(key => {
+            if (key.startsWith(storagePrefix)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+
+        // Also clear localStorage if it exists
+        try {
+            localStorage.removeItem(storagePrefix);
+        } catch (e) {
+            // Ignore
+        }
+
         storeLogout();
+        console.log('🔒 All user data cleared on logout');
     }, [storeLogout]);
 
     // Search for all spreadsheets (limit 20, recent first)

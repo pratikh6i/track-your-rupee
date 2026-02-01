@@ -223,6 +223,58 @@ const useStore = create(
     }),
     {
       name: 'track-your-rupee-v2',
+      // Use sessionStorage for better security - clears on tab close
+      storage: {
+        getItem: (name) => {
+          // Try to find user-scoped storage
+          const keys = Object.keys(sessionStorage);
+          const userScopedKeys = keys.filter(key => key.startsWith(name + '-'));
+
+          // If we have user-scoped keys, try to load from the most recent one
+          if (userScopedKeys.length > 0) {
+            // Try each user-scoped key until we find valid data
+            for (const key of userScopedKeys) {
+              try {
+                const str = sessionStorage.getItem(key);
+                if (str) {
+                  const parsed = JSON.parse(str);
+                  // Validate it has state and user
+                  if (parsed?.state?.user?.email) {
+                    console.log('✓ Loaded user-scoped storage for:', parsed.state.user.email);
+                    return parsed;
+                  }
+                }
+              } catch (e) {
+                console.warn('Failed to parse storage key:', key);
+              }
+            }
+          }
+
+          // Fallback: try the base key (for backward compatibility)
+          const str = sessionStorage.getItem(name);
+          return str ? JSON.parse(str) : null;
+        },
+        setItem: (name, value) => {
+          // Only persist if we have a user
+          const state = typeof value === 'string' ? JSON.parse(value).state : value.state;
+          if (state?.user?.email) {
+            // Use user-scoped key to prevent data leakage
+            const userScopedKey = `${name}-${state.user.email}`;
+            sessionStorage.setItem(userScopedKey, JSON.stringify(value));
+            console.log('💾 Saved user-scoped storage for:', state.user.email);
+          }
+        },
+        removeItem: (name) => {
+          // Remove all possible user-scoped keys
+          const keys = Object.keys(sessionStorage);
+          keys.forEach(key => {
+            if (key.startsWith(name)) {
+              sessionStorage.removeItem(key);
+            }
+          });
+          console.log('🧹 Cleared all storage with prefix:', name);
+        }
+      },
       // ONLY persist sheetId and user - NOT the data
       partialize: (state) => ({
         sheetId: state.sheetId,
