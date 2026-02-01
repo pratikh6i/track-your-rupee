@@ -484,6 +484,11 @@ const GoogleAuthProviderInner = ({ children }) => {
                     // Ignore localStorage errors
                 }
 
+                // SECURITY FIX: Immediately clear any stale data BEFORE loading
+                // This prevents data from other users from being displayed
+                setSheetData([]);
+                setSheetId(null); // Clear stale sheetId that might belong to different user
+
                 setUser({
                     email: userInfo.email,
                     name: userInfo.name,
@@ -564,6 +569,11 @@ const GoogleAuthProviderInner = ({ children }) => {
 
                 const userInfo = await userInfoResponse.json();
                 setAccessToken(token);
+
+                // SECURITY FIX: Clear stale data before loading to prevent cross-user leakage
+                setSheetData([]);
+                setSheetId(null);
+
                 setUser({
                     email: userInfo.email,
                     name: userInfo.name,

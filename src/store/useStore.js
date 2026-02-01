@@ -226,33 +226,11 @@ const useStore = create(
       // Use sessionStorage for better security - clears on tab close
       storage: {
         getItem: (name) => {
-          // Try to find user-scoped storage
-          const keys = Object.keys(sessionStorage);
-          const userScopedKeys = keys.filter(key => key.startsWith(name + '-'));
-
-          // If we have user-scoped keys, try to load from the most recent one
-          if (userScopedKeys.length > 0) {
-            // Try each user-scoped key until we find valid data
-            for (const key of userScopedKeys) {
-              try {
-                const str = sessionStorage.getItem(key);
-                if (str) {
-                  const parsed = JSON.parse(str);
-                  // Validate it has state and user
-                  if (parsed?.state?.user?.email) {
-                    console.log('✓ Loaded user-scoped storage for:', parsed.state.user.email);
-                    return parsed;
-                  }
-                }
-              } catch (e) {
-                console.warn('Failed to parse storage key:', key);
-              }
-            }
-          }
-
-          // Fallback: try the base key (for backward compatibility)
-          const str = sessionStorage.getItem(name);
-          return str ? JSON.parse(str) : null;
+          // SECURITY FIX: Never load persisted state automatically
+          // This prevents loading another user's sheetId/settings
+          // GoogleAuthProvider will load fresh data after verifying user
+          console.log('🔒 Storage getItem called - returning null for security (fresh load)');
+          return null;
         },
         setItem: (name, value) => {
           // Only persist if we have a user
