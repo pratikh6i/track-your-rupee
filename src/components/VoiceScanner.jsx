@@ -66,6 +66,8 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
     const [interimTranscript, setInterimTranscript] = useState('');
 
     const recognitionRef = useRef(null);
+    const previousFinalTranscript = useRef('');
+    const silenceTimerRef = useRef(null);
 
     // Check for duplicates
     const isDuplicate = useCallback((expense) => {
@@ -96,7 +98,7 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
         const recognition = new SpeechRecognition();
 
         recognition.lang = 'mr-IN'; // Marathi (India)
-        recognition.continuous = true;
+        recognition.continuous = false; // Disable continuous to prevent duplicates
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
@@ -120,8 +122,33 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
             }
 
             if (final) {
-                setTranscript(prev => prev + final);
+                // Deduplicate: only add if different from previous final
+                if (final.trim() !== previousFinalTranscript.current.trim()) {
+                    setTranscript(prev => prev + final);
+                    previousFinalTranscript.current = final;
+                }
                 setInterimTranscript('');
+
+                // Auto-restart recognition to continue listening
+                if (recognitionRef.current) {
+                    // Clear any existing silence timer
+                    if (silenceTimerRef.current) {
+                        clearTimeout(silenceTimerRef.current);
+                    }
+                    // Set timer to stop after 2 seconds of silence
+                    silenceTimerRef.current = setTimeout(() => {
+                        if (recognitionRef.current) {
+                            recognitionRef.current.stop();
+                        }
+                    }, 2000);
+
+                    // Restart recognition
+                    try {
+                        recognitionRef.current.start();
+                    } catch (e) {
+                        // Ignore if already started
+                    }
+                }
             } else {
                 setInterimTranscript(interim);
             }
@@ -153,6 +180,13 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
         setInterimTranscript('');
         setError(null);
         setParsedExpenses(null);
+        previousFinalTranscript.current = ''; // Clear previous transcript tracking
+
+        // Clear any existing silence timer
+        if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+        }
 
         const recognition = initializeSpeechRecognition();
         if (recognition) {
@@ -163,6 +197,12 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
 
     // Stop recording
     const stopRecording = () => {
+        // Clear silence timer
+        if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+        }
+
         if (recognitionRef.current) {
             recognitionRef.current.stop();
             recognitionRef.current = null;
@@ -192,7 +232,7 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
         setParsedExpenses(null);
 
         try {
-            const model = "gemini-2.0-flash-exp"; // Fast and efficient for text
+            const model = "gemini-1.5-flash"; // Stable and fast for text processing
             console.log(`Using Gemini model: ${model}`);
             console.log('Transcript:', transcript);
 
