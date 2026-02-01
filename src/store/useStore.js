@@ -56,15 +56,36 @@ const useStore = create(
       }),
 
       logout: () => {
-        // Clear everything on logout
+        // SECURITY: Clear EVERYTHING on logout - complete state reset
         set({
           user: null,
           isAuthenticated: false,
           sheetId: null,
           sheetData: [],
           currentView: 'onboarding',
-          needsSheet: false
+          needsSheet: false,
+          isLoading: false,
+          error: null,
+          // Reset settings to defaults
+          budget: 11000,
+          webhookUrl: '',
+          lastAlertLevel: 0,
+          // Reset profile
+          monthlySalary: 0,
+          otherGains: 0,
+          currentBalance: 0,
+          invested: 0,
+          // Reset Gemini
+          geminiApiKey: '',
+          geminiRequestCount: 0,
+          // Reset UI
+          isAIModalOpen: false,
+          isQuickAddOpen: false,
+          isHelpModalOpen: false,
+          isAddModalOpen: false,
+          editingTransaction: null
         });
+        console.log('🔒 Store completely reset on logout');
       },
 
       // Actions - Sheet

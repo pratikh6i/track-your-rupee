@@ -90,15 +90,16 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, []);
 
-    // Find sheets owned by user - first try exact user-specific name, then fallback
+    // Find sheets owned by user - ONLY exact user-specific name
     const findExistingSheets = useCallback(async (token, userEmail) => {
         try {
-            // First try to find sheet with unique user-specific name
+            // SECURITY: Only search for sheet with exact user-specific name
+            // NO fallback to generic "Track your Rupee" - that would expose other users' data
             const uniqueName = getUniqueSheetName(userEmail);
-            console.log('Searching for sheet:', uniqueName);
+            console.log('🔒 Searching for user-specific sheet ONLY:', uniqueName);
 
             const exactQuery = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name='${uniqueName}' and trashed=false`);
-            let response = await fetch(
+            const response = await fetch(
                 `https://www.googleapis.com/drive/v3/files?q=${exactQuery}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -106,27 +107,15 @@ const GoogleAuthProviderInner = ({ children }) => {
             if (response.ok) {
                 const data = await response.json();
                 if (data.files && data.files.length > 0) {
-                    console.log('✓ Found exact match sheet:', data.files[0].name);
+                    console.log('✓ Found user sheet:', data.files[0].name);
                     return data.files;
                 }
             }
 
-            // Fallback: search for any sheet with our app prefix (for migration from old versions)
-            console.log('No exact match, searching for any Track your Rupee sheets...');
-            const fallbackQuery = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and name contains '${APP_SHEET_PREFIX}' and trashed=false`);
-            response = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=${fallbackQuery}&fields=files(id,name,modifiedTime,owners)&orderBy=modifiedTime desc`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (!response.ok) {
-                console.error('Drive API error:', response.status);
-                return [];
-            }
-
-            const data = await response.json();
-            console.log('Found sheets (fallback):', data.files?.length || 0);
-            return data.files || [];
+            // NO fallback - if user's specific sheet doesn't exist, return empty
+            // This ensures each user only sees their own data
+            console.log('ℹ️ No sheet found for user - will create new one');
+            return [];
         } catch (error) {
             console.error('Error searching for sheets:', error);
             return [];
