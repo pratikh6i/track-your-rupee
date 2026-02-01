@@ -29,6 +29,11 @@ const ProfileModal = ({ onClose }) => {
     const [showWebhook, setShowWebhook] = useState(false);
     const [showGeminiKey, setShowGeminiKey] = useState(false);
 
+    // Report fields
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [reportStatus, setReportStatus] = useState(null);
+
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null);
     const [isTestingWebhook, setIsTestingWebhook] = useState(false);
@@ -96,6 +101,139 @@ const ProfileModal = ({ onClose }) => {
         }
 
         setIsTestingWebhook(false);
+    };
+
+    const sendToWebhook = async (message) => {
+        const corsProxies = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+
+        for (const proxy of corsProxies) {
+            try {
+                const targetUrl = proxy.includes('allorigins')
+                    ? proxy + encodeURIComponent(localWebhook)
+                    : proxy + localWebhook;
+
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: message })
+                });
+
+                if (response.ok) return true;
+            } catch (e) {
+                console.warn('Proxy failed for report:', proxy);
+            }
+        }
+        return false;
+    };
+
+    const getGeminiInsight = async (prompt) => {
+        if (!localGeminiKey) return null;
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${localGeminiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 200, temperature: 0.7 }
+                    })
+                }
+            );
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        } catch (e) {
+            console.error('Gemini error:', e);
+            return null;
+        }
+    };
+
+    const handleReport = async (type) => {
+        if (!localWebhook) {
+            setReportStatus({ type: 'error', msg: 'Please configure webhook first' });
+            return;
+        }
+
+        setIsGeneratingReport(true);
+        setReportStatus(null);
+
+        const { sheetData } = useStore.getState();
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        try {
+            let message = '';
+            let statsData = [];
+
+            if (type === 'today') {
+                const todayExpenses = sheetData.filter(d => d.date === todayStr && d.category !== 'Income');
+                const todayIncome = sheetData.filter(d => d.date === todayStr && d.category === 'Income');
+                const totalSpent = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+                message = `📊 *Today's Analysis (Real-time)*\n📅 ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}\n\n`;
+
+                if (todayExpenses.length === 0) {
+                    message += `✨ No expenses recorded yet today! Feeling rich? 🍵\n`;
+                } else {
+                    message += `💸 *Expenses*\n` + todayExpenses.map(e => `• ${e.item}: ₹${e.amount}`).join('\n') + `\n\n`;
+                    message += `*Total Spent:* ₹${totalSpent}\n\n`;
+                }
+
+                if (localGeminiKey) {
+                    const aiPrompt = `Give a short, funny financial roast or insight for these expenses today: ${JSON.stringify(todayExpenses)}. Current budget: ₹${localBudget}. Max 30 words. No markdown.`;
+                    const insight = await getGeminiInsight(aiPrompt);
+                    if (insight) message += `💭 *AI Note:* ${insight}`;
+                }
+            } else {
+                const year = now.getFullYear();
+                const monthName = monthNames[selectedMonth];
+                const filtered = sheetData.filter(d => {
+                    const dDate = new Date(d.date);
+                    return dDate.getMonth() === selectedMonth && dDate.getFullYear() === year;
+                });
+
+                const spent = filtered.filter(d => d.category !== 'Income').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+                const income = filtered.filter(d => d.category === 'Income').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+                const cats = filtered.filter(d => d.category !== 'Income').reduce((acc, e) => {
+                    acc[e.category] = (acc[e.category] || 0) + (parseFloat(e.amount) || 0);
+                    return acc;
+                }, {});
+
+                message = `🏆 *Monthly Wrap-up: ${monthName} ${year}*\n\n`;
+                message += `💰 *Income:* ₹${income}\n`;
+                message += `💸 *Expenses:* ₹${spent}\n`;
+                message += `🎯 *Budget:* ₹${localBudget}\n`;
+                message += `📊 *Usage:* ${Math.round((spent / localBudget) * 100)}%\n\n`;
+
+                message += `*Top Categories:*\n`;
+                Object.entries(cats).sort((a, b) => b[1] - a[1]).forEach(([c, a]) => {
+                    message += `• ${c}: ₹${a}\n`;
+                });
+
+                if (localGeminiKey) {
+                    const aiPrompt = `Analyze my spending for ${monthName}: Total Spent ₹${spent}, Categories: ${JSON.stringify(cats)}. Budget was ₹${localBudget}. 
+                    Highlight my behavior patterns (e.g. "Impulse buyer", "Savings ninja", etc.) and give one actionable tip. Max 60 words. No markdown.`;
+                    const analysis = await getGeminiInsight(aiPrompt);
+                    if (analysis) message += `\n🧐 *Financial Behavior Analysis:*\n${analysis}`;
+                }
+            }
+
+            const ok = await sendToWebhook(message);
+            if (ok) {
+                setReportStatus({ type: 'success', msg: `✓ ${type === 'today' ? "Today's" : 'Monthly'} report sent!` });
+            } else {
+                throw new Error('Proxy failed');
+            }
+        } catch (e) {
+            setReportStatus({ type: 'error', msg: 'Failed to send report. Check connection.' });
+        } finally {
+            setIsGeneratingReport(false);
+        }
     };
 
     const handleSave = async () => {
@@ -319,6 +457,43 @@ const ProfileModal = ({ onClose }) => {
                                 {showGeminiKey ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
                         </div>
+                    </div>
+
+                    {/* Reports Section */}
+                    <div className="section-title">📊 Reports & Analysis</div>
+                    <div className="report-group">
+                        <p className="field-hint">Send manual reports to your Google Chat webhook anytime.</p>
+
+                        <div className="report-actions">
+                            <button
+                                className="btn-report-today"
+                                onClick={() => handleReport('today')}
+                                disabled={isGeneratingReport || !localWebhook}
+                            >
+                                {isGeneratingReport ? <Loader2 size={16} className="spin" /> : <Zap size={16} />}
+                                Today's Insights
+                            </button>
+
+                            <div className="monthly-report-box">
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                    className="month-select"
+                                >
+                                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => (
+                                        <option key={m} value={i}>{m} {new Date().getFullYear()}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    className="btn-report-month"
+                                    onClick={() => handleReport('month')}
+                                    disabled={isGeneratingReport || !localWebhook}
+                                >
+                                    Send Wrap-up
+                                </button>
+                            </div>
+                        </div>
+                        {reportStatus && <p className={`test-status ${reportStatus.type}`}>{reportStatus.msg}</p>}
                     </div>
 
                     {/* Save Button */}

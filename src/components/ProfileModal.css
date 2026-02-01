@@ -232,6 +232,80 @@
     cursor: not-allowed;
 }
 
+/* Report Section Styles */
+.report-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.report-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.btn-report-today {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #F0F9FF;
+    border: 1.5px solid #BAE6FD;
+    color: #0369A1;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-report-today:hover:not(:disabled) {
+    background: #E0F2FE;
+    border-color: #7DD3FC;
+}
+
+.monthly-report-box {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.month-select {
+    flex: 1;
+    padding: 0.625rem;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    outline: none;
+    background: white;
+}
+
+.btn-report-month {
+    padding: 0.625rem 1.25rem;
+    background: #F5F3FF;
+    border: 1.5px solid #DDD6FE;
+    color: #6D28D9;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-report-month:hover:not(:disabled) {
+    background: #EDE9FE;
+    border-color: #C4B5FD;
+}
+
+.btn-report-today:disabled,
+.btn-report-month:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Danger Zone */
 .danger-zone {
     margin-top: 2rem;
