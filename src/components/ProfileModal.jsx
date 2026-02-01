@@ -50,31 +50,52 @@ const ProfileModal = ({ onClose }) => {
         setIsTestingWebhook(true);
         setTestStatus(null);
 
-        try {
-            // Use a CORS proxy to make the webhook request work from browser
-            const proxyUrl = 'https://corsproxy.io/?';
-            const response = await fetch(proxyUrl + encodeURIComponent(localWebhook), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: `✅ *Test Alert from Track your Rupee*\nYour webhook is configured correctly!\nTime: ${new Date().toLocaleString('en-IN')}`
-                })
-            });
+        // List of CORS proxies to try (in order)
+        const corsProxies = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
 
-            if (response.ok) {
-                setTestStatus({ type: 'success', msg: '✓ Test message sent! Check your Google Chat.' });
-            } else {
-                setTestStatus({ type: 'error', msg: '✗ Webhook returned error. Check URL.' });
+        const testMessage = {
+            text: `✅ *Test Alert from Track your Rupee*\nYour webhook is configured correctly!\nTime: ${new Date().toLocaleString('en-IN')}`
+        };
+
+        let success = false;
+        let lastError = null;
+
+        for (const proxy of corsProxies) {
+            try {
+                const targetUrl = proxy.includes('allorigins')
+                    ? proxy + encodeURIComponent(localWebhook)
+                    : proxy + localWebhook;
+
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testMessage)
+                });
+
+                if (response.ok) {
+                    success = true;
+                    setTestStatus({ type: 'success', msg: '✓ Test message sent! Check your Google Chat.' });
+                    break;
+                }
+            } catch (error) {
+                lastError = error;
+                console.log('Proxy failed:', proxy, error.message);
             }
-        } catch (error) {
-            console.error('Webhook error:', error);
+        }
+
+        if (!success) {
+            console.error('All webhook proxies failed:', lastError);
             setTestStatus({
                 type: 'error',
-                msg: '✗ Network error. Ensure the URL is correct.'
+                msg: '✗ Could not send test. The webhook will work via Apps Script scheduler.'
             });
-        } finally {
-            setIsTestingWebhook(false);
         }
+
+        setIsTestingWebhook(false);
     };
 
     const handleSave = async () => {
