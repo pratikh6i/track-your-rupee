@@ -743,6 +743,71 @@ const GoogleAuthProviderInner = ({ children }) => {
         }
     }, [accessToken, verifySheetAccess, setSheetId, loadSheetData, setNeedsSheet, setLoading]);
 
+    // Delete all app resources (Sanitize feature)
+    const deleteAppResources = useCallback(async () => {
+        const currentSheetId = useStore.getState().sheetId;
+
+        if (!accessToken) {
+            throw new Error('Not authenticated');
+        }
+
+        try {
+            setLoading(true);
+
+            // Step 1: Delete the Google Sheet (move to trash)
+            if (currentSheetId) {
+                console.log('🗑️ Deleting sheet:', currentSheetId);
+                const deleteResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${currentSheetId}`,
+                    {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${accessToken}` }
+                    }
+                );
+
+                if (!deleteResponse.ok && deleteResponse.status !== 404) {
+                    console.error('Failed to delete sheet:', deleteResponse.status);
+                    // Continue anyway - user might not own the sheet
+                }
+            }
+
+            // Step 2: Clear ALL sessionStorage
+            console.log('🧹 Clearing all session storage...');
+            const storagePrefix = 'track-your-rupee-v2';
+            const sessionKeys = Object.keys(sessionStorage);
+            sessionKeys.forEach(key => {
+                if (key.startsWith(storagePrefix) || key.startsWith('tyr_')) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+
+            // Step 3: Clear all localStorage too
+            try {
+                localStorage.removeItem(storagePrefix);
+            } catch (e) {
+                // Ignore
+            }
+
+            // Step 4: Reset store
+            storeLogout();
+
+            // Step 5: Clear token and logout
+            googleLogout();
+            setAccessToken(null);
+            clearSession();
+
+            console.log('✅ All app data sanitized successfully');
+
+            // Reload page to reset everything
+            window.location.href = '/';
+
+        } catch (error) {
+            console.error('Error during sanitize:', error);
+            setLoading(false);
+            throw error;
+        }
+    }, [accessToken, storeLogout, setLoading]);
+
     const value = {
         user: useStore.getState().user,
         isAuthenticated: !!accessToken,
@@ -756,6 +821,7 @@ const GoogleAuthProviderInner = ({ children }) => {
         createSheet,
         searchAllSpreadsheets,
         validateAndSetSheet,
+        deleteAppResources,
         accessToken,
     };
 
