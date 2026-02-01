@@ -330,6 +330,8 @@ const GoogleAuthProviderInner = ({ children }) => {
                 .filter(item => item.category !== 'Income')
                 .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) + parseFloat(expense.amount);
 
+            console.log('📊 Budget Alert Check:', { budget, webhookUrl: webhookUrl ? '✓ Set' : '✗ Not Set', currentTotal, lastAlertLevel });
+
             if (budget > 0 && webhookUrl) {
                 const percentage = (currentTotal / budget) * 100;
                 let alertLevel = 0;
@@ -340,24 +342,41 @@ const GoogleAuthProviderInner = ({ children }) => {
                 else if (percentage >= 50) alertLevel = 50;
                 else if (percentage >= 25) alertLevel = 25;
 
+                console.log(`💰 Budget usage: ${percentage.toFixed(1)}% (${currentTotal}/₹${budget})`);
+
                 // Only alert if we crossed a NEW threshold upwards
                 if (alertLevel > lastAlertLevel) {
-                    console.log(`Triggering budget alert: ${alertLevel}%`);
+                    console.log(`🔔 Triggering budget alert: ${alertLevel}% (previous: ${lastAlertLevel}%)`);
 
                     const message = alertLevel === 100
-                        ? `🚨 **CRITICAL ALERT**: You have utilized **100%** of your budget (₹${budget})!`
-                        : `⚠️ **Spending Alert**: You have used **${alertLevel}%** of your monthly budget.`;
+                        ? `🚨 **CRITICAL ALERT**: You have utilized **100%** of your budget (₹${budget})!\n\nCurrent spending: ₹${currentTotal.toFixed(0)}`
+                        : `⚠️ **Spending Alert**: You have used **${alertLevel}%** of your monthly budget.\n\nCurrent spending: ₹${currentTotal.toFixed(0)} / ₹${budget}`;
 
-                    // Send Webhook (Fire & Forget)
+                    // Send Webhook with better error handling
+                    console.log('📤 Sending webhook to:', webhookUrl.substring(0, 50) + '...');
                     fetch(webhookUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                        mode: 'no-cors', // Prevent CORS issues with Google Chat webhooks
                         body: JSON.stringify({ text: message })
-                    }).catch(err => console.error('Webhook failed', err));
-
-                    // Update local state to prevent spam
-                    state.setLastAlertLevel(alertLevel);
+                    })
+                        .then(() => {
+                            console.log('✅ Webhook sent successfully!');
+                            // Update local state to prevent spam
+                            state.setLastAlertLevel(alertLevel);
+                        })
+                        .catch(err => {
+                            console.error('❌ Webhook failed:', err);
+                            console.error('Webhook URL:', webhookUrl);
+                            // Still update alert level to prevent spam even if webhook fails
+                            state.setLastAlertLevel(alertLevel);
+                        });
+                } else {
+                    console.log(`ℹ️ Alert level ${alertLevel}% not triggered (current level: ${lastAlertLevel}%)`);
                 }
+            } else {
+                if (budget <= 0) console.log('⚠️ Budget not set (0 or negative)');
+                if (!webhookUrl) console.log('⚠️ Webhook URL not configured');
             }
             // --------------------------
 

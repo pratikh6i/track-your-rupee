@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
     Plus, RefreshCw, TrendingUp, TrendingDown, FileSpreadsheet,
-    Link as LinkIcon, XCircle, Target, LogOut, Camera, User, Sparkles
+    Link as LinkIcon, XCircle, Target, LogOut, Camera, User, Sparkles, Mic
 } from 'lucide-react';
 import AddExpenseModal from './AddExpenseModal';
 import AIQuickAdd from './AIQuickAdd';
@@ -18,6 +18,7 @@ import SheetPickerModal from './SheetPickerModal';
 import SettingsModal from './SettingsModal';
 import ProfileModal from './ProfileModal';
 import BillScanner from './BillScanner';
+import VoiceScanner from './VoiceScanner';
 import { getCategoryColor, getCategoryIcon } from '../data/categories';
 
 const Dashboard = () => {
@@ -33,6 +34,7 @@ const Dashboard = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isVoiceScannerOpen, setIsVoiceScannerOpen] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     // Link Input State
@@ -446,6 +448,9 @@ const Dashboard = () => {
             </main>
 
             {/* FABs */}
+            <button className="fab fab-voice" onClick={() => setIsVoiceScannerOpen(true)} title="Voice Input (Marathi)">
+                <Mic size={22} />
+            </button>
             <button className="fab fab-scan" onClick={() => setIsScannerOpen(true)} title="Scan Bill">
                 <Camera size={22} />
             </button>
@@ -460,6 +465,7 @@ const Dashboard = () => {
             {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
             {isProfileOpen && <ProfileModal onClose={() => setIsProfileOpen(false)} />}
             {isScannerOpen && <BillScanner onClose={() => setIsScannerOpen(false)} />}
+            {isVoiceScannerOpen && <VoiceScanner onClose={() => setIsVoiceScannerOpen(false)} onExpensesAdded={(count) => console.log(`Added ${count} expenses via voice`)} />}
         </div>
     );
 };
