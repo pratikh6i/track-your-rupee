@@ -232,12 +232,12 @@ const VoiceScanner = ({ onClose, onExpensesAdded }) => {
         setParsedExpenses(null);
 
         try {
-            const model = "gemini-1.5-flash"; // Stable and fast for text processing
+            const model = "gemini-2.5-flash-lite"; // Stable model for text processing
             console.log(`Using Gemini model: ${model}`);
             console.log('Transcript:', transcript);
 
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
