@@ -3,10 +3,13 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    /* Default rounding */
 }
 
 [data-theme='dark'] .skeleton-box {
-    background-color: rgba(30, 41, 59, 0.6);
+    background-color: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .skeleton-shimmer {
@@ -17,15 +20,19 @@
     height: 100%;
     background: linear-gradient(90deg,
             transparent,
-            rgba(255, 255, 255, 0.1),
+            rgba(255, 255, 255, 0.08) 20%,
+            rgba(255, 255, 255, 0.15) 50%,
+            rgba(255, 255, 255, 0.08) 80%,
             transparent);
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 [data-theme='dark'] .skeleton-shimmer {
     background: linear-gradient(90deg,
             transparent,
-            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.03) 20%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.03) 80%,
             transparent);
 }
 

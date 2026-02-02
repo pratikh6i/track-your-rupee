@@ -181,7 +181,9 @@ const Dashboard = () => {
                         <span className="logo-text">Track your Rupee</span>
                     </div>
                     <div className="header-right">
-                        {user?.picture && (
+                        {isLoading ? (
+                            <Skeleton width="36px" height="36px" borderRadius="50%" />
+                        ) : user?.picture && (
                             <img src={user.picture} alt="" className="user-avatar" referrerPolicy="no-referrer" />
                         )}
                         <button className="btn-icon logout" onClick={logout} title="Sign out">
@@ -193,10 +195,16 @@ const Dashboard = () => {
                 <main className="no-sheet-container">
                     <div className="empty-state">
                         <div className="empty-icon">
-                            <FileSpreadsheet size={48} />
+                            {isLoading ? <Skeleton width="48px" height="48px" /> : <FileSpreadsheet size={48} />}
                         </div>
-                        <h2>No Expense Sheet Found</h2>
-                        <p>Create a new Google Sheet to start tracking your expenses.</p>
+                        {isLoading ? (
+                            <><Skeleton width="60%" height="28px" className="mb-8" /><Skeleton width="80%" height="16px" /></>
+                        ) : (
+                            <>
+                                <h2>No Expense Sheet Found</h2>
+                                <p>Create a new Google Sheet to start tracking your expenses.</p>
+                            </>
+                        )}
 
                         <button className="btn-create" onClick={createSheet} disabled={isLoading}>
                             {isLoading ? 'Creating...' : 'Create New Sheet'}
@@ -220,10 +228,10 @@ const Dashboard = () => {
                                         placeholder="Paste Sheet Link..."
                                         value={sheetLinkInput}
                                         onChange={(e) => setSheetLinkInput(e.target.value)}
-                                        disabled={isValidatingLink}
+                                        disabled={isValidatingLink || isLoading}
                                     />
                                 </div>
-                                <button type="submit" className="btn-link" disabled={!sheetLinkInput || isValidatingLink}>
+                                <button type="submit" className="btn-link" disabled={!sheetLinkInput || isValidatingLink || isLoading}>
                                     {isValidatingLink ? '...' : 'Link'}
                                 </button>
                             </form>

@@ -251,8 +251,9 @@ const ProfileModal = ({ onClose }) => {
                 message += `${remStr} : ₹${(localBudget - spent).toLocaleString('en-IN')}\n\n`;
 
                 // Progress bar
-                const pct = Math.round((spent / localBudget) * 100);
-                const filledBlocks = Math.min(Math.round(pct / 10), 10);
+                const budgetVal = parseFloat(localBudget) || 11000;
+                const pct = Math.round((spent / budgetVal) * 100);
+                const filledBlocks = Math.max(0, Math.min(Math.round(pct / 10), 10));
                 const emptyBlocks = 10 - filledBlocks;
                 const progressBar = '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks);
                 message += `Usage: [${progressBar}] ${pct}%\n`;
