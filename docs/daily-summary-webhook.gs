@@ -332,3 +332,33 @@ function setup() {
   createDailyTrigger();
   Logger.log('Setup complete! The summary will be sent every night at 11:30 PM.');
 }
+
+/**
+ * WEBHOOK PROXY (For Webapp use)
+ * Allows the webapp to send reports through this script to avoid CORS issues.
+ */
+function doPost(e) {
+  try {
+    const params = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Get webhook URL from settings sheet
+    let webhookUrl = CONFIG.WEBHOOK_URL;
+    const settingsSheet = ss.getSheetByName(CONFIG.SETTINGS_SHEET);
+    if (settingsSheet) {
+      const settingsData = settingsSheet.getDataRange().getValues();
+      for (const row of settingsData) {
+        if (row[0] === 'webhookUrl' && row[1]) webhookUrl = row[1];
+      }
+    }
+    
+    if (webhookUrl && params.text) {
+      sendToWebhook(webhookUrl, params.text);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}

@@ -104,29 +104,40 @@ const ProfileModal = ({ onClose }) => {
     };
 
     const sendToWebhook = async (message) => {
+        // Use multiple reliable proxies
         const corsProxies = [
             'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://cors-anywhere.herokuapp.com/'
+            'https://thingproxy.freeboard.io/fetch/',
+            'https://corsproxy.io/?'
         ];
 
+        let lastErr = null;
         for (const proxy of corsProxies) {
             try {
                 const targetUrl = proxy.includes('allorigins')
                     ? proxy + encodeURIComponent(localWebhook)
                     : proxy + localWebhook;
 
+                console.log('Sending report via:', proxy);
                 const response = await fetch(targetUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({ text: message })
                 });
 
-                if (response.ok) return true;
+                if (response.ok) {
+                    console.log('✓ Report sent via', proxy);
+                    return true;
+                }
             } catch (e) {
-                console.warn('Proxy failed for report:', proxy);
+                lastErr = e;
+                console.warn('Proxy failed:', proxy, e.message);
             }
         }
+
+        console.error('All proxies failed for report', lastErr);
         return false;
     };
 

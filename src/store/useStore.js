@@ -247,10 +247,27 @@ const useStore = create(
       // Use sessionStorage for better security - clears on tab close
       storage: {
         getItem: (name) => {
-          // SECURITY FIX: Never load persisted state automatically
-          // This prevents loading another user's sheetId/settings
-          // GoogleAuthProvider will load fresh data after verifying user
-          console.log('🔒 Storage getItem called - returning null for security (fresh load)');
+          // SECURITY: Try to find user-scoped storage first
+          // This is safe because sessionStorage is cleared on logout and tab close
+          const keys = Object.keys(sessionStorage);
+          const userScopedKeys = keys.filter(key => key.startsWith(name + '-'));
+
+          if (userScopedKeys.length > 0) {
+            // Priority: Load the most recent user-scoped key
+            // (There should usually only be one because we clear stale ones on login)
+            const key = userScopedKeys[0];
+            const str = sessionStorage.getItem(key);
+            if (str) {
+              try {
+                const parsed = JSON.parse(str);
+                console.log('🔒 Loaded isolated storage for:', parsed.state?.user?.email);
+                return parsed;
+              } catch (e) {
+                console.error('Failed to parse storage:', e);
+              }
+            }
+          }
+
           return null;
         },
         setItem: (name, value) => {

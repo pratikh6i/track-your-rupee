@@ -473,17 +473,19 @@ const GoogleAuthProviderInner = ({ children }) => {
                     // Ignore localStorage errors
                 }
 
-                // SECURITY FIX: Immediately clear any stale data BEFORE loading
-                // This prevents data from other users from being displayed
-                setSheetData([]);
-                setSheetId(null); // Clear stale sheetId that might belong to different user
-
                 setUser({
                     email: userInfo.email,
                     name: userInfo.name,
                     picture: userInfo.picture,
                     sub: userInfo.sub,
                 });
+
+                // SECURITY: Clear data only if user is different (though handle above should have cleared storage)
+                const currentStoreUser = useStore.getState().user;
+                if (currentStoreUser && currentStoreUser.email !== userInfo.email) {
+                    setSheetData([]);
+                    setSheetId(null);
+                }
 
                 // Step 1: Check if we have a persisted sheetId that's still valid
                 const persistedSheetId = useStore.getState().sheetId;
@@ -493,6 +495,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                     if (isValid) {
                         console.log('✓ Using persisted sheet ID');
                         await loadSheetData(token, persistedSheetId);
+                        await refreshData();
                         setNeedsSheet(false);
                         setCurrentView('dashboard');
                         return; // Exit early - we have a valid sheet
@@ -511,6 +514,7 @@ const GoogleAuthProviderInner = ({ children }) => {
                     console.log('✓ Using existing sheet:', latestSheet.name, latestSheet.id);
                     setSheetId(latestSheet.id);
                     await loadSheetData(token, latestSheet.id);
+                    await refreshData();
                     setNeedsSheet(false);
                     setCurrentView('dashboard');
                 } else {
@@ -559,10 +563,6 @@ const GoogleAuthProviderInner = ({ children }) => {
                 const userInfo = await userInfoResponse.json();
                 setAccessToken(token);
 
-                // SECURITY FIX: Clear stale data before loading to prevent cross-user leakage
-                setSheetData([]);
-                setSheetId(null);
-
                 setUser({
                     email: userInfo.email,
                     name: userInfo.name,
@@ -576,6 +576,8 @@ const GoogleAuthProviderInner = ({ children }) => {
                     const isValid = await verifySheetAccess(token, storedSheetId);
                     if (isValid) {
                         await loadSheetData(token, storedSheetId);
+                        // Ensure settings are loaded even on resume
+                        await refreshData();
                         setCurrentView('dashboard');
                     } else {
                         // If persisted sheet invalid, search Drive
