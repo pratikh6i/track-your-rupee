@@ -20,6 +20,7 @@ import ProfileModal from './ProfileModal';
 import BillScanner from './BillScanner';
 import VoiceScanner from './VoiceScanner';
 import { getCategoryColor, getCategoryIcon } from '../data/categories';
+import Skeleton from './Skeleton';
 
 const Dashboard = () => {
     const { sheetData, needsSheet, budget, user, monthlySalary, otherGains, currentBalance } = useStore();
@@ -287,28 +288,24 @@ const Dashboard = () => {
             <main className="dashboard-main">
                 {/* Stats Grid - 5 Cards */}
                 <div className="stats-grid">
-                    <div className="stat-card opening">
-                        <div className="stat-value">{formatCurrency(stats.openingBalance)}</div>
-                        <div className="stat-label">Opening Balance</div>
-                    </div>
-                    <div className="stat-card income">
-                        <div className="stat-value">{formatCurrency(stats.income)}</div>
-                        <div className="stat-label">Income</div>
-                    </div>
-                    <div className="stat-card expense">
-                        <div className="stat-value">{formatCurrency(stats.spent)}</div>
-                        <div className="stat-label">Spent</div>
-                    </div>
-                    <div className="stat-card savings">
-                        <div className="stat-value" style={{ color: stats.savings >= 0 ? '#10B981' : '#EF4444' }}>
-                            {formatCurrency(Math.abs(stats.savings))}
+                    {[
+                        { label: 'Opening Balance', key: 'openingBalance', color: '' },
+                        { label: 'Income', key: 'income', color: '' },
+                        { label: 'Spent', key: 'spent', color: '' },
+                        { label: 'Savings', key: 'savings', color: '' },
+                        { label: 'Closing Balance', key: 'closingBalance', color: '' }
+                    ].map((stat, idx) => (
+                        <div key={idx} className={`stat-card ${stat.key === 'savings' ? '' : stat.key}`}>
+                            {isLoading ? (
+                                <Skeleton width="80px" height="24px" className="mb-8" />
+                            ) : (
+                                <div className="stat-value" style={stat.key === 'savings' ? { color: stats.savings >= 0 ? '#10B981' : '#EF4444' } : {}}>
+                                    {formatCurrency(stat.key === 'savings' ? Math.abs(stats.savings) : stats[stat.key])}
+                                </div>
+                            )}
+                            <div className="stat-label">{stat.key === 'savings' && stats.savings < 0 ? 'Overspent' : stat.label}</div>
                         </div>
-                        <div className="stat-label">{stats.savings >= 0 ? 'Savings' : 'Overspent'}</div>
-                    </div>
-                    <div className="stat-card closing">
-                        <div className="stat-value">{formatCurrency(stats.closingBalance)}</div>
-                        <div className="stat-label">Closing Balance</div>
-                    </div>
+                    ))}
                 </div>
 
                 {/* Budget Progress */}
@@ -318,16 +315,30 @@ const Dashboard = () => {
                             <Target size={18} />
                             <span>Monthly Budget</span>
                         </div>
-                        <span className={`budget-amount ${budgetStatus}`}>
-                            {formatCurrency(currentMonthExpense)} / {formatCurrency(budget)}
-                        </span>
+                        {isLoading ? (
+                            <Skeleton width="120px" height="18px" />
+                        ) : (
+                            <span className={`budget-amount ${budgetStatus}`}>
+                                {formatCurrency(currentMonthExpense)} / {formatCurrency(budget)}
+                            </span>
+                        )}
                     </div>
                     <div className="budget-bar">
-                        <div className={`budget-fill ${budgetStatus}`} style={{ width: `${budgetPercentage}%` }}></div>
+                        {isLoading ? (
+                            <Skeleton width="100%" height="8px" borderRadius="10px" />
+                        ) : (
+                            <div className={`budget-fill ${budgetStatus}`} style={{ width: `${budgetPercentage}%` }}></div>
+                        )}
                     </div>
                     <div className="budget-footer">
-                        <span>{budgetPercentage}% used</span>
-                        <span>{formatCurrency(budget - currentMonthExpense)} remaining</span>
+                        {isLoading ? (
+                            <><Skeleton width="60px" height="14px" /><Skeleton width="80px" height="14px" /></>
+                        ) : (
+                            <>
+                                <span>{budgetPercentage}% used</span>
+                                <span>{formatCurrency(budget - currentMonthExpense)} remaining</span>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -425,7 +436,18 @@ const Dashboard = () => {
                         {selectedCategory && <span className="filter-badge">{selectedCategory}</span>}
                     </div>
                     <div className="transactions-list">
-                        {filteredTransactions.length === 0 ? (
+                        {isLoading ? (
+                            [...Array(5)].map((_, i) => (
+                                <div key={i} className="transaction-row skeleton">
+                                    <Skeleton width="40px" height="40px" borderRadius="12px" />
+                                    <div className="t-info" style={{ flex: 1, marginLeft: '12px' }}>
+                                        <Skeleton width="40%" height="16px" className="mb-4" />
+                                        <Skeleton width="30%" height="12px" />
+                                    </div>
+                                    <Skeleton width="60px" height="20px" />
+                                </div>
+                            ))
+                        ) : filteredTransactions.length === 0 ? (
                             <div className="no-transactions">No transactions found</div>
                         ) : (
                             filteredTransactions.slice().reverse().slice(0, 10).map((item, i) => (

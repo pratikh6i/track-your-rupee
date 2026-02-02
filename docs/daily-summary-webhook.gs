@@ -278,7 +278,7 @@ Be encouraging if good, gently warning if overspending. Use 1-2 emojis. No markd
 
   try {
     const response = UrlFetchApp.fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         contentType: 'application/json',

@@ -145,7 +145,7 @@ const ProfileModal = ({ onClose }) => {
         if (!localGeminiKey) return null;
         try {
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${localGeminiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${localGeminiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -220,8 +220,12 @@ const ProfileModal = ({ onClose }) => {
                 const year = now.getFullYear();
                 const monthName = monthNames[selectedMonth];
                 const filtered = sheetData.filter(d => {
-                    const dDate = new Date(d.date);
-                    return dDate.getMonth() === selectedMonth && dDate.getFullYear() === year;
+                    if (!d.date) return false;
+                    const dateParts = d.date.split('-'); // Expected YYYY-MM-DD
+                    if (dateParts.length < 2) return false;
+                    const dMonth = parseInt(dateParts[1]) - 1; // 0-indexed
+                    const dYear = parseInt(dateParts[0]);
+                    return dMonth === selectedMonth && dYear === year;
                 });
 
                 const spent = filtered.filter(d => d.category !== 'Income').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
