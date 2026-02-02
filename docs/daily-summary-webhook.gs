@@ -157,58 +157,56 @@ function sendDailySummary() {
   const dayName = Utilities.formatDate(today, Session.getScriptTimeZone(), 'EEEE');
   const dateFormatted = Utilities.formatDate(today, Session.getScriptTimeZone(), 'dd MMM yyyy');
   
-  message += `📊 *Daily Expense Summary*\n`;
-  message += `📅 ${dayName}, ${dateFormatted}\n\n`;
+  message += `*Daily Expense Summary* (${dateFormatted})\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
   
   if (todayExpenses.length === 0) {
-    message += `🎉 No expenses today! Great job saving money!\n\n`;
+    message += `✨ No expenses recorded today! Great job.\n\n`;
   } else {
-    // Expenses table
-    message += `💸 *Today's Expenses (${todayExpenses.length} items)*\n`;
-    message += `┌─────────────────────────────────┐\n`;
+    // Expenses table in code block
+    message += `*TODAY'S SPENDING*\n`;
+    message += `\`\`\`\n`;
+    message += `Item               | Category    | Amount\n`;
+    message += `-------------------|-------------|--------\n`;
     
-    todayExpenses.slice(0, 10).forEach((exp, i) => {
-      const itemName = exp.item.substring(0, 18).padEnd(18);
-      const amt = `₹${exp.amount}`.padStart(8);
-      message += `│ ${itemName} ${amt} │\n`;
+    todayExpenses.forEach((exp, i) => {
+      const item = exp.item.substring(0, 18).padEnd(18);
+      const cat = exp.category.substring(0, 11).padEnd(11);
+      const amt = `₹${exp.amount}`.padStart(7);
+      message += `${item} | ${cat} | ${amt}\n`;
     });
     
-    if (todayExpenses.length > 10) {
-      message += `│  ...and ${todayExpenses.length - 10} more items        │\n`;
-    }
-    
-    message += `├─────────────────────────────────┤\n`;
-    message += `│ *TOTAL*              ₹${totalSpent.toString().padStart(8)} │\n`;
-    message += `└─────────────────────────────────┘\n\n`;
-    
-    // Category breakdown
-    message += `📁 *By Category*\n`;
-    const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
-    sortedCategories.forEach(([cat, amt]) => {
-      const pct = Math.round((amt / totalSpent) * 100);
-      message += `• ${cat}: ₹${amt} (${pct}%)\n`;
-    });
-    message += `\n`;
+    const totalLine = `TOTAL SPENT`.padEnd(31);
+    const totalVal = `₹${totalSpent}`.padStart(7);
+    message += `-------------------|-------------|--------\n`;
+    message += `${totalLine} | ${totalVal}\n`;
+    message += `\`\`\`\n\n`;
   }
   
-  // Monthly progress
-  message += `📈 *Monthly Budget Progress*\n`;
-  message += `• Spent this month: ₹${monthTotal.toLocaleString('en-IN')}\n`;
-  message += `• Budget: ₹${monthlyBudget.toLocaleString('en-IN')}\n`;
-  message += `• Used: ${budgetPercent}%\n`;
-  message += `• Remaining: ₹${remaining.toLocaleString('en-IN')}\n`;
+  // Monthly progress in code block
+  message += `*MONTHLY BUDGET PROGRESS*\n`;
+  message += `\`\`\`\n`;
+  const spentStr = `Spent this month`.padEnd(20);
+  const budgetStr = `Monthly Budget`.padEnd(20);
+  const remainStr = `Remaining`.padEnd(20);
+  
+  message += `${spentStr} : ₹${monthTotal.toLocaleString('en-IN')}\n`;
+  message += `${budgetStr} : ₹${monthlyBudget.toLocaleString('en-IN')}\n`;
+  message += `${remainStr} : ₹${remaining.toLocaleString('en-IN')}\n\n`;
   
   // Progress bar
   const filledBlocks = Math.min(Math.round(budgetPercent / 10), 10);
   const emptyBlocks = 10 - filledBlocks;
   const progressBar = '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks);
-  message += `[${progressBar}] ${budgetPercent}%\n\n`;
+  message += `[${progressBar}] ${budgetPercent}%\n`;
+  message += `\`\`\`\n\n`;
   
   // Add fun comment - try Gemini, fallback to hardcoded
   let funComment = getFunComment(totalSpent, budgetPercent, todayExpenses.length);
   
   if (geminiKey && todayExpenses.length > 0) {
     try {
+      const aiPrompt = `Analyze today's spend: ₹${totalSpent}. Total month: ₹${monthTotal}/₹${monthlyBudget}. Give a short, witty 1-sentence behavioral insight.`;
       const aiComment = getGeminiInsight(geminiKey, todayExpenses, monthTotal, monthlyBudget);
       if (aiComment) funComment = aiComment;
     } catch (e) {
@@ -216,7 +214,7 @@ function sendDailySummary() {
     }
   }
   
-  message += `💭 *Insight*\n${funComment}`;
+  message += `💡 *Insight:* ${funComment}`;
   
   // Send to webhook
   sendToWebhook(webhookUrl, message);

@@ -183,22 +183,38 @@ const ProfileModal = ({ onClose }) => {
 
             if (type === 'today') {
                 const todayExpenses = sheetData.filter(d => d.date === todayStr && d.category !== 'Income');
-                const todayIncome = sheetData.filter(d => d.date === todayStr && d.category === 'Income');
                 const totalSpent = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+                const dateFormatted = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-                message = `📊 *Today's Analysis (Real-time)*\n📅 ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}\n\n`;
+                message = `*Today's Real-time Analysis* (${dateFormatted})\n`;
+                message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
                 if (todayExpenses.length === 0) {
-                    message += `✨ No expenses recorded yet today! Feeling rich? 🍵\n`;
+                    message += `✨ No expenses recorded yet today! Feeling rich? 🍵\n\n`;
                 } else {
-                    message += `💸 *Expenses*\n` + todayExpenses.map(e => `• ${e.item}: ₹${e.amount}`).join('\n') + `\n\n`;
-                    message += `*Total Spent:* ₹${totalSpent}\n\n`;
+                    message += `*TODAY'S SPENDING*\n`;
+                    message += `\`\`\`\n`;
+                    message += `Item               | Category    | Amount\n`;
+                    message += `-------------------|-------------|--------\n`;
+
+                    todayExpenses.forEach(exp => {
+                        const item = exp.item.substring(0, 18).padEnd(18);
+                        const cat = exp.category.substring(0, 11).padEnd(11);
+                        const amt = `₹${exp.amount}`.padStart(7);
+                        message += `${item} | ${cat} | ${amt}\n`;
+                    });
+
+                    const totalLine = `TOTAL SPENT`.padEnd(31);
+                    const totalVal = `₹${totalSpent}`.padStart(7);
+                    message += `-------------------|-------------|--------\n`;
+                    message += `${totalLine} | ${totalVal}\n`;
+                    message += `\`\`\`\n\n`;
                 }
 
                 if (localGeminiKey) {
                     const aiPrompt = `Give a short, funny financial roast or insight for these expenses today: ${JSON.stringify(todayExpenses)}. Current budget: ₹${localBudget}. Max 30 words. No markdown.`;
                     const insight = await getGeminiInsight(aiPrompt);
-                    if (insight) message += `💭 *AI Note:* ${insight}`;
+                    if (insight) message += `💡 *AI Insight:* ${insight}\n`;
                 }
             } else {
                 const year = now.getFullYear();
@@ -215,22 +231,43 @@ const ProfileModal = ({ onClose }) => {
                     return acc;
                 }, {});
 
-                message = `🏆 *Monthly Wrap-up: ${monthName} ${year}*\n\n`;
-                message += `💰 *Income:* ₹${income}\n`;
-                message += `💸 *Expenses:* ₹${spent}\n`;
-                message += `🎯 *Budget:* ₹${localBudget}\n`;
-                message += `📊 *Usage:* ${Math.round((spent / localBudget) * 100)}%\n\n`;
+                message = `*Monthly Wrap-up: ${monthName} ${year}*\n`;
+                message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-                message += `*Top Categories:*\n`;
+                message += `*MONTHLY OVERVIEW*\n`;
+                message += `\`\`\`\n`;
+                const incStr = `Total Income`.padEnd(20);
+                const expStr = `Total Expenses`.padEnd(20);
+                const budStr = `Monthly Budget`.padEnd(20);
+                const remStr = `Remaining`.padEnd(20);
+
+                message += `${incStr} : ₹${income.toLocaleString('en-IN')}\n`;
+                message += `${expStr} : ₹${spent.toLocaleString('en-IN')}\n`;
+                message += `${budStr} : ₹${localBudget.toLocaleString('en-IN')}\n`;
+                message += `${remStr} : ₹${(localBudget - spent).toLocaleString('en-IN')}\n\n`;
+
+                // Progress bar
+                const pct = Math.round((spent / localBudget) * 100);
+                const filledBlocks = Math.min(Math.round(pct / 10), 10);
+                const emptyBlocks = 10 - filledBlocks;
+                const progressBar = '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks);
+                message += `Usage: [${progressBar}] ${pct}%\n`;
+                message += `\`\`\`\n\n`;
+
+                message += `*TOP CATEGORIES*\n`;
+                message += `\`\`\`\n`;
                 Object.entries(cats).sort((a, b) => b[1] - a[1]).forEach(([c, a]) => {
-                    message += `• ${c}: ₹${a}\n`;
+                    const catName = c.substring(0, 20).padEnd(20);
+                    const amt = `₹${a.toLocaleString('en-IN')}`.padStart(10);
+                    message += `${catName} : ${amt}\n`;
                 });
+                message += `\`\`\`\n`;
 
                 if (localGeminiKey) {
                     const aiPrompt = `Analyze my spending for ${monthName}: Total Spent ₹${spent}, Categories: ${JSON.stringify(cats)}. Budget was ₹${localBudget}. 
                     Highlight my behavior patterns (e.g. "Impulse buyer", "Savings ninja", etc.) and give one actionable tip. Max 60 words. No markdown.`;
                     const analysis = await getGeminiInsight(aiPrompt);
-                    if (analysis) message += `\n🧐 *Financial Behavior Analysis:*\n${analysis}`;
+                    if (analysis) message += `\n🧐 *AI Behavior Analysis:*\n${analysis}`;
                 }
             }
 
