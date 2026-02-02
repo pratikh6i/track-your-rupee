@@ -55,9 +55,14 @@ function sendDailySummary() {
   const today = new Date();
   const todayStr = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   
-  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  // Try 'Expenses' then 'Sheet1'
+  let expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAME);
   if (!expensesSheet) {
-    Logger.log('Expenses sheet not found');
+    expensesSheet = ss.getSheetByName('Sheet1');
+  }
+  
+  if (!expensesSheet) {
+    Logger.log('Neither "Expenses" nor "Sheet1" sheet found');
     return;
   }
   

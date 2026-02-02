@@ -135,7 +135,12 @@ const GoogleAuthProviderInner = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    properties: { title: sheetName }
+                    properties: { title: sheetName },
+                    sheets: [
+                        { properties: { title: 'Expenses' } },
+                        { properties: { title: 'Profile' } },
+                        { properties: { title: 'Settings' } }
+                    ]
                 })
             });
 
@@ -145,7 +150,7 @@ const GoogleAuthProviderInner = ({ children }) => {
 
             // Initialize with headers
             await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${newSheetId}/values/A1:H1?valueInputOption=RAW`,
+                `https://sheets.googleapis.com/v4/spreadsheets/${newSheetId}/values/Expenses!A1:H1?valueInputOption=RAW`,
                 {
                     method: 'PUT',
                     headers: {
@@ -170,10 +175,19 @@ const GoogleAuthProviderInner = ({ children }) => {
     const loadSheetData = useCallback(async (token, sheetIdToLoad) => {
         try {
             setLoading(true);
-            const response = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${sheetIdToLoad}/values/A2:H1000`,
+            // Try loading from 'Expenses' first, then 'Sheet1'
+            let response = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${sheetIdToLoad}/values/Expenses!A2:H1000`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+
+            if (!response.ok) {
+                // Fallback for legacy users
+                response = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${sheetIdToLoad}/values/Sheet1!A2:H1000`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+            }
 
             if (!response.ok) {
                 console.error('Failed to load sheet data:', response.status);
@@ -294,8 +308,13 @@ const GoogleAuthProviderInner = ({ children }) => {
                 expense.month || new Date(expense.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
             ];
 
+            // Try appending to 'Expenses' first, fallback to 'Sheet1'
+            let appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/Expenses!A:H:append?valueInputOption=USER_ENTERED`;
+
+            // Check if 'Expenses' sheet exists by trying a small fetch or just using common sense
+            // We'll try to append to Expenses, if it fails, try Sheet1
             const response = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/A:H:append?valueInputOption=USER_ENTERED`,
+                appendUrl,
                 {
                     method: 'POST',
                     headers: {
@@ -305,6 +324,21 @@ const GoogleAuthProviderInner = ({ children }) => {
                     body: JSON.stringify({ values: [row] })
                 }
             );
+
+            if (!response.ok) {
+                // Try fallback to Sheet1
+                await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/Sheet1!A:H:append?valueInputOption=USER_ENTERED`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ values: [row] })
+                    }
+                );
+            }
 
             if (!response.ok) throw new Error('API request failed');
 
